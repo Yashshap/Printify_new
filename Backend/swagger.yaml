@@ -1,0 +1,314 @@
+openapi: 3.0.0
+info:
+  title: Printify API
+  version: 1.0.0
+  description: API documentation for Printify backend
+
+servers:
+  - url: /api/v1
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+paths:
+  /auth/signup:
+    post:
+      tags: [Auth]
+      summary: User signup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string }
+                password: { type: string }
+                firstName: { type: string }
+                lastName: { type: string }
+                mobile: { type: string }
+      responses:
+        '201':
+          description: Signup successful
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: User login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: Login successful
+
+  /users/me:
+    get:
+      tags: [User]
+      summary: Get user profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: User profile
+    patch:
+      tags: [User]
+      summary: Update user profile
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName: { type: string }
+                lastName: { type: string }
+                mobile: { type: string }
+                email: { type: string }
+      responses:
+        '200':
+          description: User profile updated
+
+  /stores/register:
+    post:
+      tags: [Store]
+      summary: Register a store
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                storeName: { type: string }
+                shopAddress: { type: string }
+                supportPhone: { type: string }
+                businessName: { type: string }
+                gstNumber: { type: string }
+                bankAccount: { type: string }
+                billingAddress: { type: string }
+      responses:
+        '201':
+          description: Store registered
+
+  /stores/me:
+    get:
+      tags: [Store]
+      summary: Get own store profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Store profile
+
+  /stores/{id}:
+    patch:
+      tags: [Store]
+      summary: Update store profile
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                storeName: { type: string }
+                shopAddress: { type: string }
+                supportPhone: { type: string }
+                billingAddress: { type: string }
+      responses:
+        '200':
+          description: Store profile updated
+
+  /stores/{id}/pricing:
+    patch:
+      tags: [Store]
+      summary: Update store print prices
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                blackWhitePrice: { type: number }
+                colorPrice: { type: number }
+      responses:
+        '200':
+          description: Store pricing updated
+
+  /stores/all-approved:
+    get:
+      tags: [Store]
+      summary: List all approved stores (public, paginated, filterable)
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: skip
+          schema: { type: integer }
+        - in: query
+          name: take
+          schema: { type: integer }
+      responses:
+        '200':
+          description: List of approved stores
+
+  /orders/create:
+    post:
+      tags: [Order]
+      summary: Place an order (PDF upload)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                pdf:
+                  type: string
+                  format: binary
+                storeId: { type: string }
+                colorMode: { type: string, enum: [color, black_white] }
+                pageRange: { type: string }
+                paymentStatus: { type: string }
+                paymentMethod: { type: string }
+                discount: { type: number }
+      responses:
+        '201':
+          description: Order created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  message: { type: string }
+                  data:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      price: { type: number }
+                      discount: { type: number }
+                      finalPrice: { type: number }
+                      paymentStatus: { type: string }
+                      paymentMethod: { type: string }
+
+  /orders/user:
+    get:
+      tags: [Order]
+      summary: List user's orders (paginated, filterable)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: skip
+          schema: { type: integer }
+        - in: query
+          name: take
+          schema: { type: integer }
+      responses:
+        '200':
+          description: List of user's orders
+
+  /orders/shop/{storeId}:
+    get:
+      tags: [Order]
+      summary: List shop's orders (paginated, filterable)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: storeId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: skip
+          schema: { type: integer }
+        - in: query
+          name: take
+          schema: { type: integer }
+      responses:
+        '200':
+          description: List of shop's orders
+
+  /orders/{id}/status:
+    patch:
+      tags: [Order]
+      summary: Update order status
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string }
+      responses:
+        '200':
+          description: Order status updated
+
+  /orders/{id}/pdf:
+    delete:
+      tags: [Order]
+      summary: Delete order PDF and mark as completed
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Order PDF deleted
+
+  /webhooks/payment:
+    post:
+      tags: [Webhook]
+      summary: Payment webhook endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event: { type: string }
+                payload: { type: object }
+      responses:
+        '200':
+          description: Webhook received 

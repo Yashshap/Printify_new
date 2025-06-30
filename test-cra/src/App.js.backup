@@ -1,0 +1,1545 @@
+import React, { useCallback, useState, useEffect } from "react";
+import { useDropzone } from "react-dropzone";
+import { Document, Page } from "react-pdf";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
+import { pdfjs } from 'react-pdf';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import api from "./api";
+
+// Set up PDF.js worker for react-pdf@6.2.2
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+
+const SHOPS = [
+  {
+    id: 1,
+    name: "Print Shop Central",
+    label: "Shop 1",
+    mobile: "(555) 123-4567",
+    rating: 4.5,
+    location: "123 Main St, Anytown",
+    pendingOrders: 5,
+    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBUKPqtKJTKLKH-fAH9O1oyl2-xayjoK-o2h9boVfFo0oIqisWBMrIneze_TRog3S3zNvTMWDFTtwYwoovH7rF5MdTIZlVTYzmPg5jLPc7MFvCzoOjT9QAJqgysyXqg5mFixJJE79AxMP8tbaxr30X7MqB3ixqcn77kRACY1V6hLrrxdCfo6MrYMEN5fmV2qQY2Ewz4ikDHd0v6tOlOC_b2rcj3YgOf2FI2DpwhNI_4iWUIXd_CWmKWuYOqvSz9GAOvfeu_p2hOyA"
+  },
+  {
+    id: 2,
+    name: "Quick Prints Now",
+    label: "Shop 2",
+    mobile: "(555) 987-6543",
+    rating: 4.2,
+    location: "456 Oak Ave, Anytown",
+    pendingOrders: 2,
+    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDFuEqfYGNIhx6wY4_ZRkbFeHUE6O72oUjIxhw8O_W_3o_VA5AfgxJEced8A9_C57paf_Oh9YHHjgWNsH55shUBOqNgnsccs2YoCCM5YtOFqunflEGaWWiW1p_7IKgwqU4da4xkFR2oWcxIXlaSPVWPKYSqKrPcfD5hk6gRauVfmT0-RpY_GPRR9zyY8mLqfPClVvahHij-p6TMXb4AvZli2x4ndCdtDk0f_lPbEC0gl-sWW19A-MBNy8oyTKUjE7Nk7oixLjV8Nw"
+  },
+  {
+    id: 3,
+    name: "Express Print Solutions",
+    label: "Shop 3",
+    mobile: "(555) 111-2222",
+    rating: 4.8,
+    location: "789 Pine Ln, Anytown",
+    pendingOrders: 8,
+    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDBjbsyPyJLY2uRbt4ZjVb7lT-JiRUa5CPEEa53mtDOWm2Ytpcc1u0CEdXJHsVJC1UMEeVnyycComSKPYFUIe0VH85midDGDAKtPJfAPLz3AzTixe1L7U31cLH4eXkR4s6klyKU0hXZMfButOfplyzue6NDg1gehFBfvHSeKB3Eneg_q5DSBziX_nLTw7is8Kx0uWgVh_xHEC2IVwmuCuRm92XmC9TaTMEJB066e_IzxH6e9ngnzg7iI8HtjffwnmmESGzQ-PO-wA"
+  },
+  {
+    id: 4,
+    name: "Print Masters Inc.",
+    label: "Shop 4",
+    mobile: "(555) 333-4444",
+    rating: 4.6,
+    location: "101 Elm Rd, Anytown",
+    pendingOrders: 3,
+    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDZyiLOYJejJrTeyh1FibV4zxkDxUdNfMrzUFn3BlKcpZLsywviGWQl2u9e5tejY8_xkdRF70nKSlBLA0JKvPC4xxXprOYaqcK8FPhcIW42lLcgvYHLBv_COjUAXl_KefuJW_mpNuXpMrmXZ6KVSxttebkG1s0HCTiPddP2y9gUnuYnlAi9Zoj-g8FvAiB-1s6f0tC2F0rQiT3aqCow86ikkMfvXpV5_P094FCcAqTvvRfCRb-H0kCcvBoPgAQj4NNeu8FLNPhRZQ"
+  },
+  {
+    id: 5,
+    name: "Print Pro Services",
+    label: "Shop 5",
+    mobile: "(555) 555-6666",
+    rating: 4.3,
+    location: "222 Maple Dr, Anytown",
+    pendingOrders: 6,
+    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAaOrDEHW9R444kqSLZ79IJk_XU8sZ7Ub91H6WXhLeF0vncBTOjtEAgGMvNX2bSPJwm3aQoG600VNeF9ydhLvFwF5q5H5fk2js1mQM1uVLCb1LZXOzkMjZM_FrWUw3toIrnXN5HpWipuWGHREyevaLiOwzAm1hqNCIPaWP9RKaXzh9r0N38UgIg4R9GiQ36J8TjBnxylCth1WACKGduuuaka7ykwqkqmPd-30j3M4yYdHzXh3oKGoH__fA4FQq0IChwZgSJ57L9xA"
+  }
+];
+
+function parsePagesInput(input, numPages) {
+  // Accepts comma-separated numbers and ranges (e.g., 1,3,5-7)
+  if (!input) return [];
+  const pages = new Set();
+  input.split(",").forEach(part => {
+    part = part.trim();
+    if (/^\d+$/.test(part)) {
+      const n = parseInt(part, 10);
+      if (n >= 1 && n <= numPages) pages.add(n);
+    } else if (/^(\d+)-(\d+)$/.test(part)) {
+      const [, start, end] = part.match(/(\d+)-(\d+)/);
+      let s = parseInt(start, 10), e = parseInt(end, 10);
+      if (s > e) [s, e] = [e, s];
+      for (let i = s; i <= e; i++) {
+        if (i >= 1 && i <= numPages) pages.add(i);
+      }
+    }
+  });
+  return Array.from(pages).sort((a, b) => a - b);
+}
+
+function Navbar({ active, onProfileClick, onLoginClick }) {
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, []);
+
+  // Listen for storage changes to update navbar when user logs in/out
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        setUser(JSON.parse(userData));
+      } else {
+        setUser(null);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    // Also listen for custom events
+    window.addEventListener('userStateChanged', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('userStateChanged', handleStorageChange);
+    };
+  }, []);
+
+  return (
+    <header className="sticky top-0 z-30 flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#e7edf3] px-10 py-3 bg-white bg-opacity-95 backdrop-blur">
+      <div className="flex items-center gap-4 text-[#0e141b]">
+        <div className="size-4">
+          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M24 18.4228L42 11.475V34.3663C42 34.7796 41.7457 35.1504 41.3601 35.2992L24 42V18.4228Z"
+              fill="currentColor"
+            ></path>
+            <path
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M24 8.18819L33.4123 11.574L24 15.2071L14.5877 11.574L24 8.18819ZM9 15.8487L21 20.4805V37.6263L9 32.9945V15.8487ZM27 37.6263V20.4805L39 15.8487V32.9945L27 37.6263ZM25.354 2.29885C24.4788 1.98402 23.5212 1.98402 22.646 2.29885L4.98454 8.65208C3.7939 9.08038 3 10.2097 3 11.475V34.3663C3 36.0196 4.01719 37.5026 5.55962 38.098L22.9197 44.7987C23.6149 45.0671 24.3851 45.0671 25.0803 44.7987L42.4404 38.098C43.9828 37.5026 45 36.0196 45 34.3663V11.475C45 10.2097 44.2061 9.08038 43.0155 8.65208L25.354 2.29885Z"
+              fill="currentColor"
+            ></path>
+          </svg>
+        </div>
+        <h2 className="text-[#0e141b] text-lg font-bold leading-tight tracking-[-0.015em]">Printify</h2>
+      </div>
+      <div className="flex flex-1 justify-end gap-8">
+        <div className="flex items-center gap-9">
+          {active === 'dashboard' ? (
+            <>
+              <a className={`text-[#0e141b] text-sm font-medium leading-normal${active === 'dashboard' ? ' underline font-bold' : ''}`} href="/dashboard">Dashboard</a>
+              <a className="text-[#0e141b] text-sm font-medium leading-normal" href="#">Orders</a>
+              <a className="text-[#0e141b] text-sm font-medium leading-normal" href="#">Products</a>
+              <a className="text-[#0e141b] text-sm font-medium leading-normal" href="#">Customers</a>
+              <a className="text-[#0e141b] text-sm font-medium leading-normal" href="#">Settings</a>
+            </>
+          ) : (
+            <>
+              <a className="text-[#0e141b] text-sm font-medium leading-normal" href="#">Pricing</a>
+              <a className="text-[#0e141b] text-sm font-medium leading-normal" href="#">Catalog</a>
+              <a className="text-[#0e141b] text-sm font-medium leading-normal" href="#">Blog</a>
+            </>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {!user && onLoginClick && (
+            <button
+              className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-bold leading-normal tracking-[0.015em]"
+              onClick={onLoginClick}
+            >
+              <span className="truncate">Log in</span>
+            </button>
+          )}
+          <button
+            className="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-[#e7edf3] text-[#0e141b] gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-2.5"
+          >
+            <div className="text-[#0e141b]" data-icon="Question" data-size="20px" data-weight="regular">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" fill="currentColor" viewBox="0 0 256 256">
+                <path
+                  d="M140,180a12,12,0,1,1-12-12A12,12,0,0,1,140,180ZM128,72c-22.06,0-40,16.15-40,36v4a8,8,0,0,0,16,0v-4c0-11,10.77-20,24-20s24,9,24,20-10.77,20-24,20a8,8,0,0,0-8,8v8a8,8,0,0,0,16,0v-.72c18.24-3.35,32-17.9,32-35.28C168,88.15,150.06,72,128,72Zm104,56A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"
+                ></path>
+              </svg>
+            </div>
+          </button>
+        </div>
+        {user && (
+          <div
+            className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 cursor-pointer"
+            style={{ 
+              backgroundImage: user.profileImage 
+                ? `url(${user.profileImage})`
+                : 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBp1cTiVe1zZPr9WqM9g762u7Cv14OfLUKepqDeIVsA7olVmiWyKwYy9zyScU4MiFLUGWmCX-PnY5xGKCsorNhVhL-fSE3lSP5FZuP728uHNuoCaZLNgFQ2FDEbW0eMfhi8tpUbCgKkGg9UlzXpXWwxX6MO5TbJ88xKDwkCj_0k3kGSLZRcjtRHf_Jgnbq9YkEHr-QxpazVkPpuR8FKdyBqFlZfWFLTuV4K98STg14T4LNkU4fRxF0Syt_CoL-a6uSytN9EOHEmsg")'
+            }}
+            onClick={onProfileClick || (() => navigate('/profile'))}
+          ></div>
+        )}
+      </div>
+    </header>
+  );
+}
+
+function ProfilePage() {
+  const navigate = useNavigate();
+  const [showShopReg, setShowShopReg] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [profileImage, setProfileImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  
+  // Shop registration states
+  const [shopData, setShopData] = useState({
+    storeName: '',
+    businessName: '',
+    businessType: '',
+    gstNumber: '',
+    shopAddress: '',
+    supportPhone: '',
+    bankAccount: '',
+    billingAddress: ''
+  });
+  const [shopSaving, setShopSaving] = useState(false);
+  const [shopError, setShopError] = useState('');
+  const [shopSuccess, setShopSuccess] = useState('');
+  const [userStore, setUserStore] = useState(null);
+
+  // Load user data on component mount
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/');
+      return;
+    }
+
+    // Get user data from localStorage or fetch from API
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const parsedUser = JSON.parse(userData);
+      setUser(parsedUser);
+      setEditData({
+        firstName: parsedUser.firstName || '',
+        lastName: parsedUser.lastName || '',
+        email: parsedUser.email || '',
+        mobile: parsedUser.mobile || ''
+      });
+    } else {
+      // Fetch user data from API if not in localStorage
+      api.get('/auth/me')
+        .then(res => {
+          if (res.data && res.data.data) {
+            const userData = res.data.data;
+            setUser(userData);
+            setEditData({
+              firstName: userData.firstName || '',
+              lastName: userData.lastName || '',
+              email: userData.email || '',
+              mobile: userData.mobile || ''
+            });
+            localStorage.setItem('user', JSON.stringify(userData));
+          }
+        })
+        .catch(err => {
+          console.error('Failed to fetch user data:', err);
+          // If token is invalid, redirect to login
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          navigate('/');
+        });
+    }
+    setLoading(false);
+  }, [navigate]);
+
+  // Load user's store if exists
+  useEffect(() => {
+    if (user) {
+      api.get('/stores/me')
+        .then(res => {
+          if (res.data && res.data.data) {
+            setUserStore(res.data.data);
+          }
+        })
+        .catch(err => {
+          // Store not found is expected for new users
+          console.log('No store found for user');
+        });
+    }
+  }, [user]);
+
+  const handleEditToggle = () => {
+    if (isEditing) {
+      // Cancel editing - reset to original data
+      setEditData({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        mobile: user.mobile || ''
+      });
+      setProfileImage(null);
+      setImagePreview(null);
+    }
+    setIsEditing(!isEditing);
+  };
+
+  const handleInputChange = (field, value) => {
+    setEditData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleShopInputChange = (field, value) => {
+    setShopData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    // Clear errors when user starts typing
+    if (shopError) setShopError('');
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      // First, upload image if there's a new one
+      let imageUrl = null;
+      if (profileImage) {
+        const formData = new FormData();
+        formData.append('profileImage', profileImage);
+        
+        const imageRes = await api.post('/auth/profile-image', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        
+        if (imageRes.data && imageRes.data.data) {
+          imageUrl = imageRes.data.data.profileImage;
+        }
+      }
+
+      // Then update profile data
+      const res = await api.put('/auth/profile', editData);
+      if (res.data && res.data.data) {
+        const updatedUser = res.data.data;
+        
+        // If we uploaded an image, update the user data with the new image URL
+        if (imageUrl) {
+          updatedUser.profileImage = imageUrl;
+        }
+        
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setIsEditing(false);
+        setProfileImage(null);
+        setImagePreview(null);
+        // Trigger navbar update
+        window.dispatchEvent(new Event('userStateChanged'));
+      }
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+      alert('Failed to update profile. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        alert('Image size should be less than 5MB');
+        return;
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+
+      setProfileImage(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const validateShopForm = () => {
+    if (!shopData.storeName.trim()) {
+      setShopError('Store name is required');
+      return false;
+    }
+    if (!shopData.shopAddress.trim()) {
+      setShopError('Shop address is required');
+      return false;
+    }
+    if (!shopData.supportPhone.trim()) {
+      setShopError('Support phone number is required');
+      return false;
+    }
+    if (!shopData.bankAccount.trim()) {
+      setShopError('Bank account info is required');
+      return false;
+    }
+    if (!shopData.billingAddress.trim()) {
+      setShopError('Billing address is required');
+      return false;
+    }
+    return true;
+  };
+
+  const handleShopRegistration = async () => {
+    if (!validateShopForm()) return;
+
+    setShopSaving(true);
+    setShopError('');
+    setShopSuccess('');
+
+    try {
+      // Register the store with placeholder image
+      const storeData = {
+        ...shopData,
+        storeProfileImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBp1cTiVe1zZPr9WqM9g762u7Cv14OfLUKepqDeIVsA7olVmiWyKwYy9zyScU4MiFLUGWmCX-PnY5xGKCsorNhVhL-fSE3lSP5FZuP728uHNuoCaZLNgFQ2FDEbW0eMfhi8tpUbCgKkGg9UlzXpXWwxX6MO5TbJ88xKDwkCj_0k3kGSLZRcjtRHf_Jgnbq9YkEHr-QxpazVkPpuR8FKdyBqFlZfWFLTuV4K98STg14T4LNkU4fRxF0Syt_CoL-a6uSytN9EOHEmsg'
+      };
+
+      const res = await api.post('/stores/register', storeData);
+      
+      if (res.data && res.data.data) {
+        setUserStore(res.data.data);
+        setShopSuccess('Store registered successfully! It will be reviewed by admin.');
+        setShowShopReg(false);
+        // Reset form
+        setShopData({
+          storeName: '',
+          businessName: '',
+          businessType: '',
+          gstNumber: '',
+          shopAddress: '',
+          supportPhone: '',
+          bankAccount: '',
+          billingAddress: ''
+        });
+      }
+    } catch (err) {
+      console.error('Failed to register store:', err);
+      setShopError(err.response?.data?.message || 'Failed to register store. Please try again.');
+    } finally {
+      setShopSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <>
+        <Navbar onProfileClick={() => navigate('/profile')} />
+        <div className="flex items-center justify-center min-h-screen">
+          <div>Loading profile...</div>
+        </div>
+      </>
+    );
+  }
+
+  if (!user) {
+    return (
+      <>
+        <Navbar onProfileClick={() => navigate('/profile')} />
+        <div className="flex items-center justify-center min-h-screen">
+          <div>Please log in to view your profile.</div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Navbar onProfileClick={() => navigate('/profile')} />
+      <div
+        className="relative flex min-h-screen flex-col bg-slate-50 group/design-root overflow-x-hidden"
+        style={{ fontFamily: '"Work Sans", "Noto Sans", sans-serif' }}
+      >
+        <div className="layout-container flex h-full grow flex-col">
+          <div className="px-40 flex flex-1 justify-center py-5">
+            <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
+              <div className="flex flex-wrap justify-between gap-3 p-4">
+                <p className="text-[#0e141b] tracking-light text-[32px] font-bold leading-tight min-w-72">Profile</p>
+                <div className="flex gap-2">
+                  {isEditing ? (
+                    <>
+                      <button
+                        className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#176fd3] text-white text-sm font-bold leading-normal tracking-[0.015em]"
+                        onClick={handleSave}
+                        disabled={saving}
+                      >
+                        <span className="truncate">{saving ? 'Saving...' : 'Save'}</span>
+                      </button>
+                      <button
+                        className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-bold leading-normal tracking-[0.015em]"
+                        onClick={handleEditToggle}
+                        disabled={saving}
+                      >
+                        <span className="truncate">Cancel</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#176fd3] text-white text-sm font-bold leading-normal tracking-[0.015em]"
+                        onClick={handleEditToggle}
+                      >
+                        <span className="truncate">Edit Profile</span>
+                      </button>
+                      <button
+                        className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#dc2626] text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-[#b91c1c] transition-colors"
+                        onClick={() => {
+                          localStorage.removeItem('token');
+                          localStorage.removeItem('user');
+                          // Trigger navbar update
+                          window.dispatchEvent(new Event('userStateChanged'));
+                          navigate('/');
+                        }}
+                      >
+                        <span className="truncate">Logout</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="flex p-4">
+                <div className="flex w-full flex-col gap-4 md:flex-row md:justify-between md:items-center">
+                  <div className="flex gap-4">
+                    <div className="relative">
+                      <div
+                        className="bg-center bg-no-repeat aspect-square bg-cover rounded-full min-h-32 w-32"
+                        style={{ 
+                          backgroundImage: imagePreview 
+                            ? `url(${imagePreview})` 
+                            : user.profileImage 
+                              ? `url(${user.profileImage})`
+                              : 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuClUEUOy2scE6UXRbDawj2q3Jm7dtLgFfdozKtLI7AhppWhOozYEKOiw0Y8GnEGlyY-wfYdYAZ12kBrBdGaMZ9_zv4AJyWxGoffutKBhfyeg1BEgxzOd0p8LExqt4s-AFB3EWJJThZyF5B5cXDPmymLp_NggK8xplUkNuDTMmtvvJwJVWCdNj5c2yot2Noz4eo0O2Wyk-uG_WdFk9k3-rs4MkE7LK_-OU4UTP_4swr8gyQhhI2Tk1XuE5cy9zNNFpRSLsQ5T54cXg")'
+                        }}
+                      ></div>
+                      {isEditing && (
+                        <label className="absolute bottom-0 right-0 bg-[#176fd3] text-white rounded-full p-2 cursor-pointer hover:bg-[#1557a8] transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
+                            <path d="M208,56H180.28L166.65,35.56A8,8,0,0,0,160,32H96a8,8,0,0,0-6.65,3.56L75.71,56H48A24,24,0,0,0,24,80V192a24,24,0,0,0,24,24H208a24,24,0,0,0,24-24V80A24,24,0,0,0,208,56ZM128,168a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z"></path>
+                          </svg>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
+                    <div className="flex flex-col justify-center">
+                      <p className="text-[#0e141b] text-[22px] font-bold leading-tight tracking-[-0.015em]">{user.firstName} {user.lastName}</p>
+                      <p className="text-[#4e7097] text-base font-normal leading-normal">{user.email}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <h2 className="text-[#0e141b] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Personal information</h2>
+              <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                <label className="flex flex-col min-w-40 flex-1">
+                  <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">First name</p>
+                  <input 
+                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" 
+                    value={isEditing ? editData.firstName : (user.firstName || "")} 
+                    onChange={(e) => isEditing && handleInputChange('firstName', e.target.value)}
+                    readOnly={!isEditing}
+                  />
+                </label>
+              </div>
+              <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                <label className="flex flex-col min-w-40 flex-1">
+                  <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Last name</p>
+                  <input 
+                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" 
+                    value={isEditing ? editData.lastName : (user.lastName || "")} 
+                    onChange={(e) => isEditing && handleInputChange('lastName', e.target.value)}
+                    readOnly={!isEditing}
+                  />
+                </label>
+              </div>
+              <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                <label className="flex flex-col min-w-40 flex-1">
+                  <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Email</p>
+                  <input 
+                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" 
+                    value={isEditing ? editData.email : (user.email || "")} 
+                    onChange={(e) => isEditing && handleInputChange('email', e.target.value)}
+                    readOnly={!isEditing}
+                  />
+                </label>
+              </div>
+              <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                <label className="flex flex-col min-w-40 flex-1">
+                  <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Phone number</p>
+                  <input 
+                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" 
+                    value={isEditing ? editData.mobile : (user.mobile || "")} 
+                    onChange={(e) => isEditing && handleInputChange('mobile', e.target.value)}
+                    readOnly={!isEditing}
+                  />
+                </label>
+              </div>
+              
+              {/* Shop Registration Section */}
+              {userStore ? (
+                <div className="px-4 py-3">
+                  <h3 className="text-[#0e141b] text-[18px] font-bold leading-tight tracking-[-0.015em] pb-3">Your Store</h3>
+                  <div className="bg-white rounded-xl p-4 border border-[#d0dbe7]">
+                    <div className="flex items-center gap-4 mb-4">
+                      {userStore.storeProfileImage && (
+                        <div 
+                          className="w-16 h-16 rounded-full bg-cover bg-center"
+                          style={{ backgroundImage: `url(${userStore.storeProfileImage})` }}
+                        ></div>
+                      )}
+                      <div>
+                        <p className="text-[#0e141b] text-lg font-bold">{userStore.storeName}</p>
+                        <p className="text-[#4e7097] text-sm">Status: {userStore.status}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-[#4e7097]">Address:</p>
+                        <p className="text-[#0e141b]">{userStore.shopAddress}</p>
+                      </div>
+                      <div>
+                        <p className="text-[#4e7097]">Phone:</p>
+                        <p className="text-[#0e141b]">{userStore.supportPhone}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <button
+                    className="text-[#0e141b] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5 text-left w-full hover:underline"
+                    onClick={() => setShowShopReg((v) => !v)}
+                  >
+                    Shop Registration
+                  </button>
+                  {showShopReg && (
+                    <>
+                      {shopError && (
+                        <div className="px-4 py-2 mb-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                          {shopError}
+                        </div>
+                      )}
+                      {shopSuccess && (
+                        <div className="px-4 py-2 mb-4 bg-green-100 border border-green-400 text-green-700 rounded">
+                          {shopSuccess}
+                        </div>
+                      )}
+                      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                        <label className="flex flex-col min-w-40 flex-1">
+                          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Store Name (required)</p>
+                          <input 
+                            placeholder="Enter store name" 
+                            className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" 
+                            value={shopData.storeName}
+                            onChange={(e) => handleShopInputChange('storeName', e.target.value)}
+                          />
+                        </label>
+                      </div>
+                      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                        <label className="flex flex-col min-w-40 flex-1">
+                          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Business Name/Legal Entity (optional)</p>
+                          <input 
+                            placeholder="Enter business name" 
+                            className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" 
+                            value={shopData.businessName}
+                            onChange={(e) => handleShopInputChange('businessName', e.target.value)}
+                          />
+                        </label>
+                      </div>
+                      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                        <label className="flex flex-col min-w-40 flex-1">
+                          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Business Type</p>
+                          <select 
+                            className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 bg-[image:--select-button-svg] placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal"
+                            value={shopData.businessType}
+                            onChange={(e) => handleShopInputChange('businessType', e.target.value)}
+                          >
+                            <option value="">Select business type</option>
+                            <option value="individual">Individual</option>
+                            <option value="partnership">Partnership</option>
+                            <option value="corporation">Corporation</option>
+                            <option value="llc">LLC</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </label>
+                      </div>
+                      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                        <label className="flex flex-col min-w-40 flex-1">
+                          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Tax ID/GST/VAT Number (optional)</p>
+                          <input 
+                            placeholder="Enter tax ID" 
+                            className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" 
+                            value={shopData.gstNumber}
+                            onChange={(e) => handleShopInputChange('gstNumber', e.target.value)}
+                          />
+                        </label>
+                      </div>
+                      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                        <label className="flex flex-col min-w-40 flex-1">
+                          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Shop Address (required)</p>
+                          <input 
+                            placeholder="Enter shop address" 
+                            className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" 
+                            value={shopData.shopAddress}
+                            onChange={(e) => handleShopInputChange('shopAddress', e.target.value)}
+                          />
+                        </label>
+                      </div>
+                      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                        <label className="flex flex-col min-w-40 flex-1">
+                          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Support Phone Number (required)</p>
+                          <input 
+                            placeholder="Enter support phone number" 
+                            className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" 
+                            value={shopData.supportPhone}
+                            onChange={(e) => handleShopInputChange('supportPhone', e.target.value)}
+                          />
+                        </label>
+                      </div>
+                      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                        <label className="flex flex-col min-w-40 flex-1">
+                          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Bank Account Info/PayPal Email (required)</p>
+                          <input 
+                            placeholder="Enter bank account info or PayPal email" 
+                            className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" 
+                            value={shopData.bankAccount}
+                            onChange={(e) => handleShopInputChange('bankAccount', e.target.value)}
+                          />
+                        </label>
+                      </div>
+                      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                        <label className="flex flex-col min-w-40 flex-1">
+                          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Billing Address (required)</p>
+                          <input 
+                            placeholder="Enter billing address" 
+                            className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" 
+                            value={shopData.billingAddress}
+                            onChange={(e) => handleShopInputChange('billingAddress', e.target.value)}
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-stretch">
+                        <div className="flex flex-1 gap-3 flex-wrap px-4 py-3 justify-start">
+                          <button 
+                            className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#176fd3] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em]"
+                            onClick={handleShopRegistration}
+                            disabled={shopSaving}
+                          >
+                            <span className="truncate">{shopSaving ? 'Registering...' : 'Launch Store'}</span>
+                          </button>
+                          <button 
+                            className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-bold leading-normal tracking-[0.015em]"
+                            onClick={() => setShowShopReg(false)}
+                            disabled={shopSaving}
+                          >
+                            <span className="truncate">Cancel</span>
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function AppContent() {
+  const [pdfFile, setPdfFile] = useState(null);
+  const [numPages, setNumPages] = useState(null);
+  const [colorMode, setColorMode] = useState("color");
+  const [pagesInput, setPagesInput] = useState("");
+  const [pagesToShow, setPagesToShow] = useState([]);
+  const [showShopView, setShowShopView] = useState(false);
+  const [selectedShop, setSelectedShop] = useState(null);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+  const [shops, setShops] = useState([]);
+  const [shopsLoading, setShopsLoading] = useState(false);
+  const [shopsError, setShopsError] = useState("");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [signupData, setSignupData] = useState({ firstName: "", lastName: "", mobile: "", email: "", password: "", confirmPassword: "" });
+  const [signupError, setSignupError] = useState("");
+  const [signupSuccess, setSignupSuccess] = useState("");
+  const navigate = useNavigate();
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [orders, setOrders] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
+  const [user, setUser] = React.useState(null);
+  // Notification state variables removed - not implementing notifications for now
+
+  // Fetch shops from backend
+  useEffect(() => {
+    if (showShopView) {
+      setShopsLoading(true);
+      setShopsError("");
+      api.get("/stores/all-approved")
+        .then(res => {
+          console.log("Shops API response:", res.data); // Debug log
+          // Handle different response structures
+          const shopsData = res.data.stores || res.data.data || [];
+          setShops(shopsData);
+          if (shopsData.length === 0) {
+            setShopsError("No approved shops found. Please contact admin to approve shops.");
+          }
+        })
+        .catch(err => {
+          console.error("Error fetching shops:", err); // Debug log
+          setShopsError(err.response?.data?.message || "Failed to load shops");
+        })
+        .finally(() => setShopsLoading(false));
+    }
+  }, [showShopView]);
+
+  const onDrop = useCallback((acceptedFiles) => {
+    console.log('Files dropped:', acceptedFiles);
+    if (acceptedFiles && acceptedFiles[0]) {
+      console.log('Selected file:', acceptedFiles[0]);
+      console.log('File type:', acceptedFiles[0].type);
+      console.log('File size:', acceptedFiles[0].size);
+      
+      // Validate file type
+      if (acceptedFiles[0].type !== 'application/pdf') {
+        alert('Please select a valid PDF file.');
+        return;
+      }
+      
+      // Validate file size (max 20MB)
+      if (acceptedFiles[0].size > 20 * 1024 * 1024) {
+        alert('File size must be less than 20MB.');
+        return;
+      }
+      
+      setPdfFile(acceptedFiles[0]);
+      setPagesInput("");
+      setPagesToShow([]);
+    }
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { "application/pdf": [".pdf"] },
+    multiple: false,
+  });
+
+  function onDocumentLoadSuccess({ numPages }) {
+    console.log('PDF loaded successfully with', numPages, 'pages');
+    setNumPages(numPages);
+    setPagesInput("");
+    setPagesToShow(Array.from({ length: numPages }, (_, i) => i + 1));
+  }
+
+  function onDocumentLoadError(error) {
+    console.error('PDF load error details:', {
+      error: error,
+      errorMessage: error.message,
+      errorStack: error.stack,
+      errorType: error.constructor.name,
+      pdfFile: pdfFile
+    });
+    alert('Failed to load PDF. Please make sure the file is a valid PDF and try again.');
+  }
+
+  function handlePagesInputChange(e) {
+    const value = e.target.value;
+    setPagesInput(value);
+    if (numPages) {
+      const parsed = parsePagesInput(value, numPages);
+      setPagesToShow(parsed.length > 0 ? parsed : []);
+    }
+  }
+
+  function handleColorChange(mode) {
+    setColorMode(mode);
+  }
+
+  // Login handler
+  async function handleLogin(e) {
+    e.preventDefault();
+    setLoginError("");
+    try {
+      const res = await api.post("/auth/login", { email: loginEmail, password: loginPassword });
+      if (res.data && res.data.data && res.data.data.token) {
+        localStorage.setItem("token", res.data.data.token);
+        // Store user data
+        if (res.data.data.user) {
+          localStorage.setItem("user", JSON.stringify(res.data.data.user));
+        }
+        setShowLogin(false);
+        setLoginEmail("");
+        setLoginPassword("");
+        setLoginError("");
+        // Trigger navbar update
+        window.dispatchEvent(new Event('userStateChanged'));
+      } else {
+        setLoginError("Invalid response from server");
+      }
+    } catch (err) {
+      setLoginError(err.response?.data?.message || "Login failed");
+    }
+  }
+
+  // Signup handler
+  async function handleSignup(e) {
+    e.preventDefault();
+    setSignupError("");
+    setSignupSuccess("");
+    if (signupData.password !== signupData.confirmPassword) {
+      setSignupError("Passwords do not match");
+      return;
+    }
+    try {
+      const res = await api.post("/auth/signup", {
+        firstName: signupData.firstName,
+        lastName: signupData.lastName,
+        mobile: signupData.mobile,
+        email: signupData.email,
+        password: signupData.password,
+      });
+      setSignupSuccess("Signup successful! Please log in.");
+      setShowSignup(false);
+      setShowLogin(true);
+      setSignupData({ firstName: "", lastName: "", mobile: "", email: "", password: "", confirmPassword: "" });
+    } catch (err) {
+      setSignupError(err.response?.data?.message || "Signup failed");
+    }
+  }
+
+  // Order placement handler
+  async function handlePlaceOrder() {
+    if (!pdfFile) {
+      alert('Please upload a PDF first');
+      return;
+    }
+    
+    if (!selectedShop) {
+      alert('Please select a shop first');
+      return;
+    }
+
+    if (!numPages) {
+      alert('Please wait for PDF to load completely');
+      return;
+    }
+
+    setIsPlacingOrder(true);
+    try {
+      // Create FormData for multipart upload
+      const formData = new FormData();
+      formData.append('pdf', pdfFile);
+      formData.append('storeId', selectedShop.id);
+      formData.append('colorMode', colorMode === 'bw' ? 'black_white' : 'color');
+      formData.append('pageRange', pagesInput || 'all');
+      formData.append('paymentStatus', 'pending');
+      formData.append('paymentMethod', 'online');
+
+      // Get auth token
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Please login to place an order');
+        setShowLogin(true);
+        return;
+      }
+
+      // Upload to backend
+      const response = await api.post('/orders/create', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.data.status === 'success') {
+        alert('Order placed successfully!');
+        
+        // Reset form
+        setPdfFile(null);
+        setNumPages(null);
+        setPagesInput("");
+        setPagesToShow([]);
+        setSelectedShop(null);
+        setColorMode('color');
+      } else {
+        alert('Failed to place order: ' + response.data.message);
+      }
+    } catch (error) {
+      console.error('Order placement error:', error);
+      if (error.response?.status === 401) {
+        alert('Please login to place an order');
+        setShowLogin(true);
+      } else {
+        alert('Failed to place order: ' + (error.response?.data?.message || error.message));
+      }
+    } finally {
+      setIsPlacingOrder(false);
+    }
+  }
+
+  // Fetch shop orders
+  React.useEffect(() => {
+    const fetchOrders = async () => {
+      if (!user) return;
+      
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setError('Please login to view orders');
+          return;
+        }
+
+        // Get user's stores first
+        const storesResponse = await api.get('/stores/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (storesResponse.data.status === 'success' && storesResponse.data.data) {
+          const storeId = storesResponse.data.data.id; // Get store ID
+          
+          // Fetch orders for this store
+          const ordersResponse = await api.get(`/orders/shop/${storeId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          console.log('Orders API response:', ordersResponse.data); // Debug log
+
+          if (ordersResponse.data.status === 'success') {
+            const newOrders = ordersResponse.data.orders || [];
+            console.log('Parsed orders:', newOrders); // Debug log
+            
+            // Check for new orders
+            if (orders.length > 0) {
+              const newOrderIds = new Set(newOrders.map(o => o.id));
+              const oldOrderIds = new Set(orders.map(o => o.id));
+              
+              newOrders.forEach(order => {
+                if (!oldOrderIds.has(order.id)) {
+                  console.log(`New order #${order.id.slice(-6)} from ${order.user?.firstName} ${order.user?.lastName}`);
+                }
+              });
+            }
+            
+            setOrders(newOrders);
+          } else {
+            setError(ordersResponse.data.message || 'Failed to fetch orders');
+          }
+        } else {
+          setError('No stores found. Please register a store first.');
+        }
+      } catch (err) {
+        console.error('Error fetching orders:', err);
+        setError(err.response?.data?.message || 'Failed to fetch orders');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+
+    // Poll for new orders every 30 seconds
+    const interval = setInterval(fetchOrders, 30000);
+    
+    return () => clearInterval(interval);
+  }, [user, orders.length]);
+
+  // Update order status
+  const updateOrderStatus = async (orderId, newStatus) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await api.patch(`/orders/${orderId}/status`, 
+        { status: newStatus },
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+
+      if (response.data.status === 'success') {
+        // Update local state
+        setOrders(prevOrders => 
+          prevOrders.map(order => 
+            order.id === orderId 
+              ? { ...order, status: newStatus }
+              : order
+          )
+        );
+        console.log(`Order #${orderId.slice(-6)} status updated to ${newStatus}`);
+      } else {
+        console.log('Failed to update order status');
+      }
+    } catch (err) {
+      console.error('Error updating order status:', err);
+    }
+  };
+
+  const filteredOrders = orderFilter === 'all' 
+    ? orders 
+    : orders.filter(o => o.status.toLowerCase() === orderFilter);
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
+  const formatTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getStatusColor = (status) => {
+    switch (status.toLowerCase()) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  return (
+    <div className="relative flex min-h-screen flex-col bg-slate-50 group/design-root overflow-x-hidden" style={{ fontFamily: '"Work Sans", "Noto Sans", sans-serif' }}>
+      <Navbar active="dashboard" onProfileClick={() => navigate('/profile')} />
+      <div className="px-40 flex flex-1 justify-center py-5">
+        <div className="layout-content-container flex flex-col max-w-[1400px] flex-1">
+          <div className="flex flex-wrap justify-between gap-3 p-4">
+            <p className="text-[#0e141b] tracking-light text-[32px] font-bold leading-tight min-w-72">Orders</p>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600">Total Orders: {orders.length}</span>
+            </div>
+          </div>
+          
+          <div className="px-4 py-3 @container">
+            <div className="flex items-center mb-4 gap-2">
+              {['all', 'pending', 'processing', 'completed', 'cancelled'].map(option => (
+                <button
+                  key={option}
+                  className={`px-5 py-2 rounded-xl text-sm font-medium border border-[#d0dbe7] transition-colors duration-150 ${orderFilter === option ? 'bg-[#176fd3] text-white' : 'bg-white text-[#0e141b]'}`}
+                  onClick={() => setOrderFilter(option)}
+                  type="button"
+                >
+                  {option.charAt(0).toUpperCase() + option.slice(1)}
+                </button>
+              ))}
+            </div>
+            
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-[#4e7097] text-sm">Loading orders...</div>
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-red-600 text-sm text-center px-4">{error}</div>
+              </div>
+            ) : filteredOrders.length === 0 ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-[#4e7097] text-sm text-center px-4">
+                  {orderFilter === 'all' ? 'No orders found.' : `No ${orderFilter} orders found.`}
+                </div>
+              </div>
+            ) : (
+              <div className="flex overflow-x-auto rounded-xl border border-[#d0dbe7] bg-slate-50">
+                <table className="flex-1 min-w-[1200px]">
+                  <thead>
+                    <tr className="bg-slate-50">
+                      <th className="px-4 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Order #</th>
+                      <th className="px-4 py-3 text-left text-[#0e141b] w-[180px] text-sm font-medium leading-normal">Customer</th>
+                      <th className="px-2 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Mobile</th>
+                      <th className="px-2 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Date</th>
+                      <th className="px-2 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Time</th>
+                      <th className="px-4 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Type</th>
+                      <th className="px-4 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Pages</th>
+                      <th className="px-4 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Status</th>
+                      <th className="px-4 py-3 text-left text-[#0e141b] w-[200px] text-sm font-medium leading-normal">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredOrders.map(order => (
+                      <tr className="border-t border-t-[#d0dbe7]" key={order.id}>
+                        <td className="h-[72px] px-4 py-2 w-[120px] text-[#0e141b] text-sm font-normal leading-normal">
+                          #{order.id.slice(-6)}
+                        </td>
+                        <td className="h-[72px] px-4 py-2 w-[180px] text-[#4e7097] text-sm font-normal leading-normal">
+                          {order.user?.firstName} {order.user?.lastName}
+                        </td>
+                        <td className="h-[72px] px-2 py-2 w-[120px] text-[#4e7097] text-sm font-normal leading-normal">
+                          {order.user?.mobile}
+                        </td>
+                        <td className="h-[72px] px-2 py-2 w-[120px] text-[#4e7097] text-sm font-normal leading-normal">
+                          {formatDate(order.createdAt)}
+                        </td>
+                        <td className="h-[72px] px-2 py-2 w-[120px] text-[#4e7097] text-sm font-normal leading-normal">
+                          {formatTime(order.createdAt)}
+                        </td>
+                        <td className="h-[72px] px-4 py-2 w-[120px] text-[#4e7097] text-sm font-normal leading-normal">
+                          {order.colorMode === 'black_white' ? 'B&W' : 'Color'}
+                        </td>
+                        <td className="h-[72px] px-4 py-2 w-[120px] text-[#4e7097] text-sm font-normal leading-normal">
+                          {order.pageRange}
+                        </td>
+                        <td className="h-[72px] px-4 py-2 w-[120px] text-sm font-normal leading-normal">
+                          <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(order.status)}`}>
+                            {order.status}
+                          </span>
+                        </td>
+                        <td className="h-[72px] px-4 py-2 w-[200px] text-sm font-normal leading-normal flex items-center gap-2">
+                          {order.pdfUrl && (
+                            <a 
+                              href={order.pdfUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs hover:bg-blue-200"
+                            >
+                              View PDF
+                            </a>
+                          )}
+                          {order.status === 'pending' && (
+                            <>
+                              <button 
+                                onClick={() => updateOrderStatus(order.id, 'processing')}
+                                className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs hover:bg-blue-200"
+                              >
+                                Start
+                              </button>
+                              <button 
+                                onClick={() => updateOrderStatus(order.id, 'cancelled')}
+                                className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs hover:bg-red-200"
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          )}
+                          {order.status === 'processing' && (
+                            <button 
+                              onClick={() => updateOrderStatus(order.id, 'completed')}
+                              className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs hover:bg-green-200"
+                            >
+                              Complete
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ShopOwnerDashboard() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [orderFilter, setOrderFilter] = React.useState('all');
+  const [orders, setOrders] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
+  const [user, setUser] = React.useState(null);
+  // Notification state variables removed - not implementing notifications for now
+
+  // Get user data
+  React.useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, []);
+
+  // Fetch shop orders
+  React.useEffect(() => {
+    const fetchOrders = async () => {
+      if (!user) return;
+      
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setError('Please login to view orders');
+          return;
+        }
+
+        // Get user's stores first
+        const storesResponse = await api.get('/stores/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (storesResponse.data.status === 'success' && storesResponse.data.data) {
+          const storeId = storesResponse.data.data.id; // Get store ID
+          
+          // Fetch orders for this store
+          const ordersResponse = await api.get(`/orders/shop/${storeId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          console.log('Orders API response:', ordersResponse.data); // Debug log
+
+          if (ordersResponse.data.status === 'success') {
+            const newOrders = ordersResponse.data.orders || [];
+            console.log('Parsed orders:', newOrders); // Debug log
+            
+            // Check for new orders
+            if (orders.length > 0) {
+              const newOrderIds = new Set(newOrders.map(o => o.id));
+              const oldOrderIds = new Set(orders.map(o => o.id));
+              
+              newOrders.forEach(order => {
+                if (!oldOrderIds.has(order.id)) {
+                  console.log(`New order #${order.id.slice(-6)} from ${order.user?.firstName} ${order.user?.lastName}`);
+                }
+              });
+            }
+            
+            setOrders(newOrders);
+          } else {
+            setError(ordersResponse.data.message || 'Failed to fetch orders');
+          }
+        } else {
+          setError('No stores found. Please register a store first.');
+        }
+      } catch (err) {
+        console.error('Error fetching orders:', err);
+        setError(err.response?.data?.message || 'Failed to fetch orders');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+
+    // Poll for new orders every 30 seconds
+    const interval = setInterval(fetchOrders, 30000);
+    
+    return () => clearInterval(interval);
+  }, [user, orders.length]);
+
+  // Update order status
+  const updateOrderStatus = async (orderId, newStatus) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await api.patch(`/orders/${orderId}/status`, 
+        { status: newStatus },
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+
+      if (response.data.status === 'success') {
+        // Update local state
+        setOrders(prevOrders => 
+          prevOrders.map(order => 
+            order.id === orderId 
+              ? { ...order, status: newStatus }
+              : order
+          )
+        );
+        console.log(`Order #${orderId.slice(-6)} status updated to ${newStatus}`);
+      } else {
+        console.log('Failed to update order status');
+      }
+    } catch (err) {
+      console.error('Error updating order status:', err);
+    }
+  };
+
+  const filteredOrders = orderFilter === 'all' 
+    ? orders 
+    : orders.filter(o => o.status.toLowerCase() === orderFilter);
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
+  const formatTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getStatusColor = (status) => {
+    switch (status.toLowerCase()) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  return (
+    <div className="relative flex min-h-screen flex-col bg-slate-50 group/design-root overflow-x-hidden" style={{ fontFamily: '"Work Sans", "Noto Sans", sans-serif' }}>
+      <Navbar active="dashboard" onProfileClick={() => navigate('/profile')} />
+      <div className="px-40 flex flex-1 justify-center py-5">
+        <div className="layout-content-container flex flex-col max-w-[1400px] flex-1">
+          <div className="flex flex-wrap justify-between gap-3 p-4">
+            <p className="text-[#0e141b] tracking-light text-[32px] font-bold leading-tight min-w-72">Orders</p>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600">Total Orders: {orders.length}</span>
+            </div>
+          </div>
+          
+          <div className="px-4 py-3 @container">
+            <div className="flex items-center mb-4 gap-2">
+              {['all', 'pending', 'processing', 'completed', 'cancelled'].map(option => (
+                <button
+                  key={option}
+                  className={`px-5 py-2 rounded-xl text-sm font-medium border border-[#d0dbe7] transition-colors duration-150 ${orderFilter === option ? 'bg-[#176fd3] text-white' : 'bg-white text-[#0e141b]'}`}
+                  onClick={() => setOrderFilter(option)}
+                  type="button"
+                >
+                  {option.charAt(0).toUpperCase() + option.slice(1)}
+                </button>
+              ))}
+            </div>
+            
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-[#4e7097] text-sm">Loading orders...</div>
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-red-600 text-sm text-center px-4">{error}</div>
+              </div>
+            ) : filteredOrders.length === 0 ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-[#4e7097] text-sm text-center px-4">
+                  {orderFilter === 'all' ? 'No orders found.' : `No ${orderFilter} orders found.`}
+                </div>
+              </div>
+            ) : (
+              <div className="flex overflow-x-auto rounded-xl border border-[#d0dbe7] bg-slate-50">
+                <table className="flex-1 min-w-[1200px]">
+                  <thead>
+                    <tr className="bg-slate-50">
+                      <th className="px-4 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Order #</th>
+                      <th className="px-4 py-3 text-left text-[#0e141b] w-[180px] text-sm font-medium leading-normal">Customer</th>
+                      <th className="px-2 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Mobile</th>
+                      <th className="px-2 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Date</th>
+                      <th className="px-2 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Time</th>
+                      <th className="px-4 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Type</th>
+                      <th className="px-4 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Pages</th>
+                      <th className="px-4 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Status</th>
+                      <th className="px-4 py-3 text-left text-[#0e141b] w-[200px] text-sm font-medium leading-normal">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredOrders.map(order => (
+                      <tr className="border-t border-t-[#d0dbe7]" key={order.id}>
+                        <td className="h-[72px] px-4 py-2 w-[120px] text-[#0e141b] text-sm font-normal leading-normal">
+                          #{order.id.slice(-6)}
+                        </td>
+                        <td className="h-[72px] px-4 py-2 w-[180px] text-[#4e7097] text-sm font-normal leading-normal">
+                          {order.user?.firstName} {order.user?.lastName}
+                        </td>
+                        <td className="h-[72px] px-2 py-2 w-[120px] text-[#4e7097] text-sm font-normal leading-normal">
+                          {order.user?.mobile}
+                        </td>
+                        <td className="h-[72px] px-2 py-2 w-[120px] text-[#4e7097] text-sm font-normal leading-normal">
+                          {formatDate(order.createdAt)}
+                        </td>
+                        <td className="h-[72px] px-2 py-2 w-[120px] text-[#4e7097] text-sm font-normal leading-normal">
+                          {formatTime(order.createdAt)}
+                        </td>
+                        <td className="h-[72px] px-4 py-2 w-[120px] text-[#4e7097] text-sm font-normal leading-normal">
+                          {order.colorMode === 'black_white' ? 'B&W' : 'Color'}
+                        </td>
+                        <td className="h-[72px] px-4 py-2 w-[120px] text-[#4e7097] text-sm font-normal leading-normal">
+                          {order.pageRange}
+                        </td>
+                        <td className="h-[72px] px-4 py-2 w-[120px] text-sm font-normal leading-normal">
+                          <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(order.status)}`}>
+                            {order.status}
+                          </span>
+                        </td>
+                        <td className="h-[72px] px-4 py-2 w-[200px] text-sm font-normal leading-normal flex items-center gap-2">
+                          {order.pdfUrl && (
+                            <a 
+                              href={order.pdfUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs hover:bg-blue-200"
+                            >
+                              View PDF
+                            </a>
+                          )}
+                          {order.status === 'pending' && (
+                            <>
+                              <button 
+                                onClick={() => updateOrderStatus(order.id, 'processing')}
+                                className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs hover:bg-blue-200"
+                              >
+                                Start
+                              </button>
+                              <button 
+                                onClick={() => updateOrderStatus(order.id, 'cancelled')}
+                                className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs hover:bg-red-200"
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          )}
+                          {order.status === 'processing' && (
+                            <button 
+                              onClick={() => updateOrderStatus(order.id, 'completed')}
+                              className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs hover:bg-green-200"
+                            >
+                              Complete
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<AppContent />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/dashboard" element={<ShopOwnerDashboard />} />
+      </Routes>
+    </Router>
+  );
+}

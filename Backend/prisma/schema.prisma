@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String
+  firstName    String
+  lastName     String
+  mobile       String
+  profileImage String?
+  role         String   @default("user")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  isDeleted    Boolean  @default(false)
+  stores       Store[]  @relation("UserStores")
+  orders       Order[]  @relation("UserOrders")
+}
+
+model Store {
+  id                String   @id @default(cuid())
+  storeName         String
+  storeProfileImage String?
+  businessName      String?
+  gstNumber         String?
+  shopAddress       String
+  supportPhone      String
+  bankAccount       String?
+  billingAddress    String?
+  status            String   @default("pending_approval")
+  ownerId           String
+  owner             User     @relation(fields: [ownerId], references: [id], name: "UserStores")
+  createdAt         DateTime @default(now())
+  isDeleted         Boolean  @default(false)
+  orders            Order[]  @relation("StoreOrders")
+  metadata          Json?
+  blackWhitePrice   Float?
+  colorPrice        Float?
+}
+
+model Order {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], name: "UserOrders")
+  storeId    String
+  store      Store    @relation(fields: [storeId], references: [id], name: "StoreOrders")
+  pdfUrl     String?
+  colorMode  String
+  pageRange  String
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+  isDeleted  Boolean  @default(false)
+  metadata   Json?
+  price            Float?
+  paymentStatus    String?
+  paymentMethod    String?
+  discount         Float?
+  finalPrice       Float?
+}
+
+model Webhook {
+  id        String   @id @default(cuid())
+  event     String
+  payload   Json
+  createdAt DateTime @default(now())
+} 
