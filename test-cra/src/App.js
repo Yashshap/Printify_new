@@ -3,10 +3,10 @@ import { useDropzone } from "react-dropzone";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import api from "./api";
 
-// Set the workerSrc for pdfjs to use the official CDN version matching the installed pdfjs-dist version
+// Set the workerSrc for pdfjs to use the CDN version
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 const SHOPS = [
@@ -1150,13 +1150,13 @@ function ShopOwnerDashboard() {
 
 export default function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
         <Route path="/" element={<AppContent />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/dashboard" element={<ShopOwnerDashboard />} />
         <Route path="/orders" element={<OrdersPage />} />
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
 }
