@@ -5,6 +5,7 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import api from "./api";
+import ShopRegistrationForm from './ShopRegistrationForm';
 
 // Set the workerSrc for pdfjs to use the CDN version
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -217,6 +218,18 @@ function ProfilePage() {
   const [showShopReg, setShowShopReg] = useState(false);
   const [user, setUser] = useState(null);
   const [store, setStore] = useState(null);
+  const [shopReg, setShopReg] = useState({
+    storeName: '',
+    businessName: '',
+    businessType: '',
+    taxId: '',
+    shopAddress: '',
+    supportPhone: '',
+    bankInfo: '',
+    billingAddress: ''
+  });
+  const [isRegisteringStore, setIsRegisteringStore] = useState(false);
+  const [shopRegToast, setShopRegToast] = useState({ message: '', type: 'success' });
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -239,6 +252,38 @@ function ProfilePage() {
         });
     }
   }, [user]);
+
+  // Handler for launching store
+  async function handleLaunchStore() {
+    setIsRegisteringStore(true);
+    setShopRegToast({ message: '', type: 'success' });
+    try {
+      const token = localStorage.getItem('token');
+      await api.post('/stores/register', shopReg, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setShopRegToast({ message: 'Store registered successfully!', type: 'success' });
+      setShopReg({
+        storeName: '',
+        businessName: '',
+        businessType: '',
+        taxId: '',
+        shopAddress: '',
+        supportPhone: '',
+        bankInfo: '',
+        billingAddress: ''
+      });
+      setShowShopReg(false);
+      // Optionally, refresh store info
+      api.get('/stores/me').then(res => {
+        if (res.data && res.data.data) setStore(res.data.data);
+      });
+    } catch (err) {
+      setShopRegToast({ message: err.response?.data?.message || 'Failed to register store.', type: 'error' });
+    } finally {
+      setIsRegisteringStore(false);
+    }
+  }
 
   return (
     <>
@@ -332,81 +377,15 @@ function ProfilePage() {
                     Shop Registration
                   </button>
                   {showShopReg && (
-                    <>
-                      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                        <label className="flex flex-col min-w-40 flex-1">
-                          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Store Name (required)</p>
-                          <input placeholder="Enter store name" className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" value="" />
-                        </label>
-                      </div>
-                      <div className="flex flex-col p-4">
-                        <div className="flex flex-col items-center gap-6 rounded-xl border-2 border-dashed border-[#d0dbe7] px-6 py-14">
-                          <div className="flex max-w-[480px] flex-col items-center gap-2">
-                            <p className="text-[#0e141b] text-lg font-bold leading-tight tracking-[-0.015em] max-w-[480px] text-center">Logo/Image Upload (optional)</p>
-                            <p className="text-[#0e141b] text-sm font-normal leading-normal max-w-[480px] text-center">Drag and drop or browse to upload an image</p>
-                          </div>
-                          <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-bold leading-normal tracking-[0.015em]">
-                            <span className="truncate">Upload Image</span>
-                          </button>
-                        </div>
-                      </div>
-                      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                        <label className="flex flex-col min-w-40 flex-1">
-                          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Business Name/Legal Entity (optional)</p>
-                          <input placeholder="Enter business name" className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" value="" />
-                        </label>
-                      </div>
-                      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                        <label className="flex flex-col min-w-40 flex-1">
-                          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Business Type</p>
-                          <select className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 bg-[image:--select-button-svg] placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal">
-                            <option value="one">Select business type</option>
-                            <option value="two">two</option>
-                            <option value="three">three</option>
-                          </select>
-                        </label>
-                      </div>
-                      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                        <label className="flex flex-col min-w-40 flex-1">
-                          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Tax ID/GST/VAT Number (optional)</p>
-                          <input placeholder="Enter tax ID" className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" value="" />
-                        </label>
-                      </div>
-                      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                        <label className="flex flex-col min-w-40 flex-1">
-                          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Shop Address</p>
-                          <input placeholder="Enter shop address" className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" value="" />
-                        </label>
-                      </div>
-                      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                        <label className="flex flex-col min-w-40 flex-1">
-                          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Support Phone Number (optional)</p>
-                          <input placeholder="Enter support phone number" className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" value="" />
-                        </label>
-                      </div>
-                      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                        <label className="flex flex-col min-w-40 flex-1">
-                          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Bank Account Info/PayPal Email</p>
-                          <input placeholder="Enter bank account info or PayPal email" className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" value="" />
-                        </label>
-                      </div>
-                      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                        <label className="flex flex-col min-w-40 flex-1">
-                          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Billing Address</p>
-                          <input placeholder="Enter billing address" className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal" value="" />
-                        </label>
-                      </div>
-                      <div className="flex justify-stretch">
-                        <div className="flex flex-1 gap-3 flex-wrap px-4 py-3 justify-start">
-                          <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#176fd3] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em]">
-                            <span className="truncate">Launch Store</span>
-                          </button>
-                          <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#e7edf3] text-[#0e141b] text-sm font-bold leading-normal tracking-[0.015em]">
-                            <span className="truncate">Save & Continue Later</span>
-                          </button>
-                        </div>
-                      </div>
-                    </>
+                    <ShopRegistrationForm
+                      shopReg={shopReg}
+                      setShopReg={setShopReg}
+                      isRegisteringStore={isRegisteringStore}
+                      onSubmit={handleLaunchStore}
+                      onCancel={() => setShowShopReg(false)}
+                      toast={shopRegToast}
+                      setToast={setShopRegToast}
+                    />
                   )}
                 </>
               )}
