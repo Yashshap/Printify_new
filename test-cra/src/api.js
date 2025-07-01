@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:4000/api/v1',
+  baseURL: "https://printify-backend-koez.onrender.com/api/v1",
 });
 
 // Attach JWT token if present

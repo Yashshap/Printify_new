@@ -124,6 +124,18 @@ function Navbar({ active, onProfileClick, onLoginClick }) {
     ? `url(${user.profileImage})`
     : 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBp1cTiVe1zZPr9WqM9g762u7Cv14OfLUKepqDeIVsA7olVmiWyKwYy9zyScU4MiFLUGWmCX-PnY5xGKCsorNhVhL-fSE3lSP5FZuP728uHNuoCaZLNgFQ2FDEbW0eMfhi8tpUbCgKkGg9UlzXpXWwxX6MO5TbJ88xKDwkCj_0k3kGSLZRcjtRHf_Jgnbq9YkEHr-QxpazVkPpuR8FKdyBqFlZfWFLTuV4K98STg14T4LNkU4fRxF0Syt_CoL-a6uSytN9EOHEmsg")';
 
+  // Add logout handler
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setIsLoggedIn(false);
+    setUser(null);
+    setStore(null);
+    navigate('/');
+    // Optionally, trigger a storage event for other tabs
+    window.dispatchEvent(new Event('storage'));
+  };
+
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#e7edf3] px-10 py-3 bg-white bg-opacity-95 backdrop-blur">
       <div className="flex items-center gap-4 text-[#0e141b]">
@@ -168,6 +180,14 @@ function Navbar({ active, onProfileClick, onLoginClick }) {
               onClick={onLoginClick}
             >
               <span className="truncate">Log in</span>
+            </button>
+          )}
+          {isLoggedIn && (
+            <button
+              className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#f87171] text-white text-sm font-bold leading-normal tracking-[0.015em]"
+              onClick={handleLogout}
+            >
+              <span className="truncate">Log out</span>
             </button>
           )}
           <button
