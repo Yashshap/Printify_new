@@ -10,59 +10,6 @@ import ShopRegistrationForm from './ShopRegistrationForm';
 // Set the workerSrc for pdfjs to use the CDN version
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
-const SHOPS = [
-  {
-    id: 1,
-    name: "Print Shop Central",
-    label: "Shop 1",
-    mobile: "(555) 123-4567",
-    rating: 4.5,
-    location: "123 Main St, Anytown",
-    pendingOrders: 5,
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBUKPqtKJTKLKH-fAH9O1oyl2-xayjoK-o2h9boVfFo0oIqisWBMrIneze_TRog3S3zNvTMWDFTtwYwoovH7rF5MdTIZlVTYzmPg5jLPc7MFvCzoOjT9QAJqgysyXqg5mFixJJE79AxMP8tbaxr30X7MqB3ixqcn77kRACY1V6hLrrxdCfo6MrYMEN5fmV2qQY2Ewz4ikDHd0v6tOlOC_b2rcj3YgOf2FI2DpwhNI_4iWUIXd_CWmKWuYOqvSz9GAOvfeu_p2hOyA"
-  },
-  {
-    id: 2,
-    name: "Quick Prints Now",
-    label: "Shop 2",
-    mobile: "(555) 987-6543",
-    rating: 4.2,
-    location: "456 Oak Ave, Anytown",
-    pendingOrders: 2,
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDFuEqfYGNIhx6wY4_ZRkbFeHUE6O72oUjIxhw8O_W_3o_VA5AfgxJEced8A9_C57paf_Oh9YHHjgWNsH55shUBOqNgnsccs2YoCCM5YtOFqunflEGaWWiW1p_7IKgwqU4da4xkFR2oWcxIXlaSPVWPKYSqKrPcfD5hk6gRauVfmT0-RpY_GPRR9zyY8mLqfPClVvahHij-p6TMXb4AvZli2x4ndCdtDk0f_lPbEC0gl-sWW19A-MBNy8oyTKUjE7Nk7oixLjV8Nw"
-  },
-  {
-    id: 3,
-    name: "Express Print Solutions",
-    label: "Shop 3",
-    mobile: "(555) 111-2222",
-    rating: 4.8,
-    location: "789 Pine Ln, Anytown",
-    pendingOrders: 8,
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDBjbsyPyJLY2uRbt4ZjVb7lT-JiRUa5CPEEa53mtDOWm2Ytpcc1u0CEdXJHsVJC1UMEeVnyycComSKPYFUIe0VH85midDGDAKtPJfAPLz3AzTixe1L7U31cLH4eXkR4s6klyKU0hXZMfButOfplyzue6NDg1gehFBfvHSeKB3Eneg_q5DSBziX_nLTw7is8Kx0uWgVh_xHEC2IVwmuCuRm92XmC9TaTMEJB066e_IzxH6e9ngnzg7iI8HtjffwnmmESGzQ-PO-wA"
-  },
-  {
-    id: 4,
-    name: "Print Masters Inc.",
-    label: "Shop 4",
-    mobile: "(555) 333-4444",
-    rating: 4.6,
-    location: "101 Elm Rd, Anytown",
-    pendingOrders: 3,
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDZyiLOYJejJrTeyh1FibV4zxkDxUdNfMrzUFn3BlKcpZLsywviGWQl2u9e5tejY8_xkdRF70nKSlBLA0JKvPC4xxXprOYaqcK8FPhcIW42lLcgvYHLBv_COjUAXl_KefuJW_mpNuXpMrmXZ6KVSxttebkG1s0HCTiPddP2y9gUnuYnlAi9Zoj-g8FvAiB-1s6f0tC2F0rQiT3aqCow86ikkMfvXpV5_P094FCcAqTvvRfCRb-H0kCcvBoPgAQj4NNeu8FLNPhRZQ"
-  },
-  {
-    id: 5,
-    name: "Print Pro Services",
-    label: "Shop 5",
-    mobile: "(555) 555-6666",
-    rating: 4.3,
-    location: "222 Maple Dr, Anytown",
-    pendingOrders: 6,
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAaOrDEHW9R444kqSLZ79IJk_XU8sZ7Ub91H6WXhLeF0vncBTOjtEAgGMvNX2bSPJwm3aQoG600VNeF9ydhLvFwF5q5H5fk2js1mQM1uVLCb1LZXOzkMjZM_FrWUw3toIrnXN5HpWipuWGHREyevaLiOwzAm1hqNCIPaWP9RKaXzh9r0N38UgIg4R9GiQ36J8TjBnxylCth1WACKGduuuaka7ykwqkqmPd-30j3M4yYdHzXh3oKGoH__fA4FQq0IChwZgSJ57L9xA"
-  }
-];
-
 function parsePagesInput(input, numPages) {
   // Accepts comma-separated numbers and ranges (e.g., 1,3,5-7)
   if (!input) return [];
