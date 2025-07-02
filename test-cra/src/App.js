@@ -240,7 +240,7 @@ function ProfilePage() {
         style={{ fontFamily: '"Work Sans", "Noto Sans", sans-serif' }}
       >
         <div className="layout-container flex h-full grow flex-col">
-          <div className="px-40 flex flex-1 justify-center py-5">
+          <div className="px-4 sm:px-10 md:px-20 lg:px-40 flex flex-1 justify-center py-5">
             <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
               <div className="flex flex-wrap justify-between gap-3 p-4"><p className="text-[#0e141b] tracking-light text-[32px] font-bold leading-tight min-w-72">Profile</p></div>
               <div className="flex p-4">
@@ -566,7 +566,7 @@ function AppContent() {
     <>
       <Navbar onProfileClick={() => navigate('/profile')} onLoginClick={() => setShowLogin(true)} />
       <div className="layout-container flex h-full grow flex-col">
-        <div className="gap-1 px-6 flex flex-1 justify-center py-5">
+        <div className="gap-1 px-4 sm:px-6 flex flex-col lg:flex-row flex-1 justify-center py-5">
           <div className="layout-content-container flex flex-col max-w-[920px] flex-1">
             {!pdfFile ? (
               <>
@@ -605,7 +605,7 @@ function AppContent() {
                 </div>
               </>
             ) : showShopView ? (
-              <div className="px-10 flex flex-1 justify-center py-5 w-full">
+              <div className="px-4 sm:px-10 flex flex-1 justify-center py-5 w-full">
                 <div className="layout-content-container flex flex-col max-w-[960px] flex-1 relative">
                   <div className="flex flex-wrap justify-between gap-3 p-4">
                     <p className="text-[#111418] tracking-light text-[32px] font-bold leading-tight min-w-72">Shops</p>
@@ -664,7 +664,7 @@ function AppContent() {
             ) : (
               <div className="flex flex-col items-center gap-2 w-full max-w-[920px] mx-auto">
                 <h3 className="text-lg font-bold mb-2">PDF Preview</h3>
-                <div className="border rounded shadow p-2 bg-white w-full max-w-[700px] h-[700px] overflow-auto">
+                <div className="border rounded shadow p-2 bg-white w-full max-w-[100vw] md:max-w-[700px] h-[70vh] overflow-auto">
                   <Document
                     file={pdfFile}
                     onLoadSuccess={onDocumentLoadSuccess}
@@ -684,7 +684,7 @@ function AppContent() {
                     {(pagesToShow.length > 0 ? pagesToShow : Array.from({ length: numPages }, (_, i) => i + 1)).map((pageNum, idx, arr) => (
                       <React.Fragment key={pageNum}>
                         <div style={colorMode === "bw" ? { filter: "grayscale(1)" } : {}}>
-                          <Page pageNumber={pageNum} width={650} />
+                          <Page pageNumber={pageNum} width={window.innerWidth < 768 ? window.innerWidth - 40 : 650} />
                         </div>
                         {idx < arr.length - 1 && (
                           <div className="w-full border-t border-gray-300 my-4"></div>
@@ -707,7 +707,7 @@ function AppContent() {
               </div>
             )}
           </div>
-          <div className="layout-content-container flex flex-col w-[360px]">
+          <div className="layout-content-container flex flex-col w-full lg:w-[360px]">
             <h2 className="text-[#111418] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">
               Print Options
             </h2>
@@ -989,7 +989,7 @@ function OrdersPage() {
   return (
     <div className="relative flex min-h-screen flex-col bg-slate-50 group/design-root overflow-x-hidden" style={{ fontFamily: '"Work Sans", "Noto Sans", sans-serif' }}>
       <Navbar active="orders" onProfileClick={() => navigate('/profile')} />
-      <div className="px-40 flex flex-1 justify-center py-5">
+      <div className="px-4 sm:px-10 md:px-20 lg:px-40 flex flex-1 justify-center py-5">
         <div className="layout-content-container flex flex-col max-w-[1400px] flex-1">
           <div className="flex flex-wrap justify-between gap-3 p-4">
             <p className="text-[#0e141b] tracking-light text-[32px] font-bold leading-tight min-w-72">Orders</p>
@@ -1082,7 +1082,7 @@ function ShopOwnerDashboard() {
   return (
     <div className="relative flex min-h-screen flex-col bg-slate-50 group/design-root overflow-x-hidden" style={{ fontFamily: '"Work Sans", "Noto Sans", sans-serif' }}>
       <Navbar active="dashboard" onProfileClick={() => navigate('/profile')} />
-      <div className="px-40 flex flex-1 justify-center py-5">
+      <div className="px-4 sm:px-10 md:px-20 lg:px-40 flex flex-1 justify-center py-5">
         <div className="layout-content-container flex flex-col max-w-[1400px] flex-1">
           <div className="flex flex-wrap justify-between gap-3 p-4">
             <p className="text-[#0e141b] tracking-light text-[32px] font-bold leading-tight min-w-72">Dashboard</p>
