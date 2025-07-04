@@ -3,9 +3,11 @@ import { useDropzone } from "react-dropzone";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, Link } from "react-router-dom";
 import api from "./api";
 import ShopRegistrationForm from './ShopRegistrationForm';
+import ShopPrintOrders from './ShopPrintOrders';
+import ProfilePage from './ProfilePage';
 
 // Set the workerSrc for pdfjs to use the CDN version
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -31,15 +33,14 @@ function parsePagesInput(input, numPages) {
   return Array.from(pages).sort((a, b) => a - b);
 }
 
-function Navbar({ active, onProfileClick, onLoginClick }) {
+function Navbar({ active, onProfileClick, onLoginClick, isLoggedIn }) {
   const navigate = useNavigate();
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
   const [user, setUser] = useState(null);
   const [store, setStore] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const handleStorageChange = () => {
-      setIsLoggedIn(!!localStorage.getItem('token'));
       const userData = localStorage.getItem('user');
       setUser(userData ? JSON.parse(userData) : null);
     };
@@ -62,11 +63,15 @@ function Navbar({ active, onProfileClick, onLoginClick }) {
             setStore(null);
           }
         })
-        .catch(() => setStore(null));
+        .catch(() => setStore(null))
+        .finally(() => setLoading(false));
     } else {
       setStore(null);
+      setLoading(false);
     }
   }, [isLoggedIn]);
+
+  if (loading) return null;
 
   const profileImage = user && user.profileImage
     ? `url(${user.profileImage})`
@@ -74,7 +79,7 @@ function Navbar({ active, onProfileClick, onLoginClick }) {
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#e7edf3] px-10 py-3 bg-white bg-opacity-95 backdrop-blur">
-      <div className="flex items-center gap-4 text-[#0e141b]">
+      <div className="flex items-center gap-4 text-[#0e141b] cursor-pointer" onClick={() => navigate('/')}>
         <div className="size-4">
           <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path
@@ -95,19 +100,14 @@ function Navbar({ active, onProfileClick, onLoginClick }) {
       </div>
       <div className="flex flex-1 justify-end gap-8">
         <div className="flex items-center gap-9">
-          {isLoggedIn && store ? (
+          <Link className="text-[#0e141b] text-sm font-medium leading-normal" to="/">Home</Link>
+          {isLoggedIn && store && (
             <>
-              <a className={`text-[#0e141b] text-sm font-medium leading-normal${active === 'dashboard' ? ' underline font-bold' : ''}`} href="/dashboard">Dashboard</a>
-              <a className="text-[#0e141b] text-sm font-medium leading-normal" href="/orders">Orders</a>
-              <a className="text-[#0e141b] text-sm font-medium leading-normal" href="#">Catalog</a>
-              <a className="text-[#0e141b] text-sm font-medium leading-normal" href="#">Blog</a>
-            </>
-          ) : (
-            <>
-              <a className="text-[#0e141b] text-sm font-medium leading-normal" href="#">Catalog</a>
-              <a className="text-[#0e141b] text-sm font-medium leading-normal" href="#">Blog</a>
+              <Link className={`text-[#0e141b] text-sm font-medium leading-normal${active === 'dashboard' ? ' underline font-bold' : ''}`} to="/dashboard">Dashboard</Link>
+              <Link className="text-[#0e141b] text-sm font-medium leading-normal" to="/orders">Orders</Link>
             </>
           )}
+          <Link className="text-[#0e141b] text-sm font-medium leading-normal" to="/catalog">Catalog</Link>
         </div>
         <div className="flex gap-2">
           {!isLoggedIn && onLoginClick && (
@@ -118,319 +118,35 @@ function Navbar({ active, onProfileClick, onLoginClick }) {
               <span className="truncate">Log in</span>
             </button>
           )}
-          <button
-            className="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-[#e7edf3] text-[#0e141b] gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-2.5"
-          >
-            <div className="text-[#0e141b]" data-icon="Question" data-size="20px" data-weight="regular">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" fill="currentColor" viewBox="0 0 256 256">
-                <path
-                  d="M140,180a12,12,0,1,1-12-12A12,12,0,0,1,140,180ZM128,72c-22.06,0-40,16.15-40,36v4a8,8,0,0,0,16,0v-4c0-11,10.77-20,24-20s24,9,24,20-10.77,20-24,20a8,8,0,0,0-8,8v8a8,8,0,0,0,16,0v-.72c18.24-3.35,32-17.9,32-35.28C168,88.15,150.06,72,128,72Zm104,56A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"
-                ></path>
-              </svg>
-            </div>
-          </button>
-          <div
-            className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 cursor-pointer"
-            style={{ backgroundImage: profileImage }}
-            onClick={onProfileClick || (() => navigate('/profile'))}
-          ></div>
+          {isLoggedIn && (
+            <div
+              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 cursor-pointer"
+              style={{ backgroundImage: profileImage }}
+              onClick={() => {
+                console.log('Profile picture clicked', { isLoggedIn, user });
+                if (onProfileClick) {
+                  onProfileClick();
+                } else {
+                  navigate('/profile');
+                }
+              }}
+            ></div>
+          )}
         </div>
       </div>
     </header>
   );
 }
 
-function ProfilePage() {
-  const navigate = useNavigate();
-  const [showShopReg, setShowShopReg] = useState(false);
-  const [user, setUser] = useState(null);
-  const [store, setStore] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedUser, setEditedUser] = useState({});
-  const [profileImageFile, setProfileImageFile] = useState(null);
+function MainAppContent({ isLoggedIn, setIsLoggedIn, onLoginClick, showLogin, setShowLogin }) {
+  const [showSignup, setShowSignup] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [signupData, setSignupData] = useState({ firstName: "", lastName: "", mobile: "", email: "", password: "", confirmPassword: "" });
+  const [signupError, setSignupError] = useState("");
+  const [signupSuccess, setSignupSuccess] = useState("");
 
-  const [shopReg, setShopReg] = useState({
-    storeName: '',
-    businessName: '',
-    businessType: '',
-    taxId: '',
-    shopAddress: '',
-    supportPhone: '',
-    bankInfo: '',
-    billingAddress: ''
-  });
-  const [isRegisteringStore, setIsRegisteringStore] = useState(false);
-  const [shopRegToast, setShopRegToast] = useState({ message: '', type: 'success' });
-
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
-      setEditedUser(parsedUser);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      // Fetch the user's store info
-      api.get('/stores/me')
-        .then(res => {
-          if (res.data && res.data.data) {
-            setStore(res.data.data);
-          }
-        })
-        .catch(() => {
-          setStore(null); // No store or error
-        });
-    }
-  }, [user]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/');
-    window.dispatchEvent(new Event('storage'));
-  };
-
-  async function handleLaunchStore() {
-    setIsRegisteringStore(true);
-    setShopRegToast({ message: '', type: 'success' });
-    try {
-      const token = localStorage.getItem('token');
-      await api.post('/stores/register', shopReg, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setShopRegToast({ message: 'Store registered successfully!', type: 'success' });
-      setShopReg({
-        storeName: '',
-        businessName: '',
-        businessType: '',
-        taxId: '',
-        shopAddress: '',
-        supportPhone: '',
-        bankInfo: '',
-        billingAddress: ''
-      });
-      setShowShopReg(false);
-      // Optionally, refresh store info
-      api.get('/stores/me').then(res => {
-        if (res.data && res.data.data) setStore(res.data.data);
-      });
-    } catch (err) {
-      setShopRegToast({ message: err.response?.data?.message || 'Failed to register store.', type: 'error' });
-    } finally {
-      setIsRegisteringStore(false);
-    }
-  }
-
-  const handleProfileUpdate = async () => {
-    const formData = new FormData();
-    formData.append('firstName', editedUser.firstName);
-    formData.append('lastName', editedUser.lastName);
-    formData.append('mobile', editedUser.mobile);
-    if (profileImageFile) {
-      formData.append('profileImage', profileImageFile);
-    }
-
-    try {
-      const { data } = await api.patch('/users/update-profile', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      setUser(data.data);
-      setEditedUser(data.data);
-      localStorage.setItem('user', JSON.stringify(data.data));
-      setIsEditing(false);
-      window.dispatchEvent(new Event('userStateChanged'));
-    } catch (error) {
-      console.error("Failed to update profile", error);
-    }
-  };
-
-  const onProfileImageDrop = useCallback((acceptedFiles) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      setProfileImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditedUser(prev => ({...prev, profileImage: reader.result}));
-      };
-      reader.readAsDataURL(file);
-    }
-  }, []);
-
-  const { getRootProps, getInputProps } = useDropzone({
-    onDrop: onProfileImageDrop,
-    accept: 'image/*',
-    multiple: false,
-  });
-
-  return (
-    <>
-      <Navbar onProfileClick={() => navigate('/profile')} />
-      <div
-        className="relative flex min-h-screen flex-col bg-slate-50 group/design-root overflow-x-hidden"
-        style={{ fontFamily: '"Work Sans", "Noto Sans", sans-serif' }}
-      >
-        <div className="layout-container flex h-full grow flex-col">
-          <div className="px-4 sm:px-10 md:px-20 lg:px-40 flex flex-1 justify-center py-5">
-            <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
-              <div className="flex flex-wrap justify-between items-center gap-3 p-4">
-                <p className="text-[#0e141b] tracking-light text-[32px] font-bold leading-tight min-w-72">Profile</p>
-                <button 
-                  className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-[#176fd3] text-white text-sm font-bold leading-normal tracking-[0.015em]"
-                  onClick={() => setIsEditing(!isEditing)}>
-                  {isEditing ? 'Cancel' : 'Edit Profile'}
-                </button>
-              </div>
-              <div className="flex p-4">
-                <div className="flex w-full flex-col gap-4 md:flex-row md:justify-between md:items-center">
-                  <div className="flex gap-4">
-                    <div {...getRootProps()} className="cursor-pointer">
-                      <input {...getInputProps()} />
-                      <div
-                        className="bg-center bg-no-repeat aspect-square bg-cover rounded-full min-h-32 w-32"
-                        style={{ backgroundImage: `url(${editedUser.profileImage || 'https://lh3.googleusercontent.com/aida-public/AB6AXuClUEUOy2scE6UXRbDawj2q3Jm7dtLgFfdozKtLI7AhppWhOozYEKOiw0Y8GnEGlyY-wfYdYAZ12kBrBdGaMZ9_zv4AJyWxGoffutKBhfyeg1BEgxzOd0p8LExqt4s-AFB3EWJJThZyF5B5cXDPmymLp_NggK8xplUkNuDTMmtvvJwJVWCdNj5c2yot2Noz4eo0O2Wyk-uG_WdFk9k3-rs4MkE7LK_-OU4UTP_4swr8gyQhhI2Tk1XuE5cy9zNNFpRSLsQ5T54cXg'})` }}
-                      ></div>
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <p className="text-[#0e141b] text-[22px] font-bold leading-tight tracking-[-0.015em]">{user ? `${user.firstName} ${user.lastName}` : ''}</p>
-                      <p className="text-[#4e7097] text-base font-normal leading-normal">{user ? user.email : ''}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <h2 className="text-[#0e141b] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Personal information</h2>
-              <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                <label className="flex flex-col min-w-40 flex-1">
-                  <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">First name</p>
-                  <input 
-                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal"
-                    value={isEditing ? editedUser.firstName : user?.firstName || ''} 
-                    readOnly={!isEditing}
-                    onChange={(e) => isEditing && setEditedUser({...editedUser, firstName: e.target.value})}
-                  />
-                </label>
-              </div>
-              <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                <label className="flex flex-col min-w-40 flex-1">
-                  <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Last name</p>
-                  <input 
-                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal"
-                    value={isEditing ? editedUser.lastName : user?.lastName || ''} 
-                    readOnly={!isEditing}
-                    onChange={(e) => isEditing && setEditedUser({...editedUser, lastName: e.target.value})}
-                  />
-                </label>
-              </div>
-              <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                <label className="flex flex-col min-w-40 flex-1">
-                  <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Email</p>
-                  <input 
-                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal"
-                    value={user?.email || ''} 
-                    readOnly 
-                  />
-                </label>
-              </div>
-              <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
-                <label className="flex flex-col min-w-40 flex-1">
-                  <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Phone number</p>
-                  <input 
-                    className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal"
-                    value={isEditing ? editedUser.mobile : user?.mobile || ''} 
-                    readOnly={!isEditing}
-                    onChange={(e) => isEditing && setEditedUser({...editedUser, mobile: e.target.value})}
-                  />
-                </label>
-              </div>
-
-              {isEditing && (
-                <div className="flex px-4 py-3">
-                  <button
-                    className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-[#176fd3] text-white text-sm font-bold leading-normal tracking-[0.015em] w-full"
-                    onClick={handleProfileUpdate}
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              )}
-
-              {/* My Store section */}
-              {store && (
-                <>
-                  <h2 className="text-[#0e141b] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">My Store</h2>
-                  <div className="bg-white rounded-xl p-4 border border-[#d0dbe7] mx-4 mb-6">
-                    <div className="flex items-center gap-4 mb-4">
-                      {store.storeProfileImage && (
-                        <div 
-                          className="w-16 h-16 rounded-full bg-cover bg-center"
-                          style={{ backgroundImage: `url(${store.storeProfileImage})` }}
-                        ></div>
-                      )}
-                      <div>
-                        <p className="text-[#0e141b] text-lg font-bold">{store.storeName}</p>
-                        <p className="text-[#4e7097] text-sm">Status: {store.status}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-[#4e7097]">Address:</p>
-                        <p className="text-[#0e141b]">{store.shopAddress}</p>
-                      </div>
-                      <div>
-                        <p className="text-[#4e7097]">Phone:</p>
-                        <p className="text-[#0e141b]">{store.supportPhone}</p>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Shop Registration section: only if user does NOT have a store */}
-              {!store && (
-                <>
-                  <div className="px-4 py-3">
-                    <button
-                      className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-[#176fd3] text-white text-sm font-bold leading-normal tracking-[0.015em] w-full"
-                      onClick={() => setShowShopReg(true)}
-                    >
-                      Register Shop
-                    </button>
-                  </div>
-                  {showShopReg && (
-                    <ShopRegistrationForm
-                      shopReg={shopReg}
-                      setShopReg={setShopReg}
-                      isRegisteringStore={isRegisteringStore}
-                      onSubmit={handleLaunchStore}
-                      onCancel={() => setShowShopReg(false)}
-                      toast={shopRegToast}
-                      setToast={setShopRegToast}
-                    />
-                  )}
-                </>
-              )}
-
-              <div className="flex px-4 py-3">
-                <button
-                  className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#f87171] text-white text-sm font-bold leading-normal tracking-[0.015em] w-full"
-                  onClick={handleLogout}
-                >
-                  <span className="truncate">Log out</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-function AppContent() {
   const [pdfFile, setPdfFile] = useState(null);
   const [numPages, setNumPages] = useState(null);
   const [colorMode, setColorMode] = useState("color");
@@ -438,17 +154,9 @@ function AppContent() {
   const [pagesToShow, setPagesToShow] = useState([]);
   const [showShopView, setShowShopView] = useState(false);
   const [selectedShop, setSelectedShop] = useState(null);
-  const [showLogin, setShowLogin] = useState(false);
-  const [showSignup, setShowSignup] = useState(false);
   const [shops, setShops] = useState([]);
   const [shopsLoading, setShopsLoading] = useState(false);
   const [shopsError, setShopsError] = useState("");
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
-  const [signupData, setSignupData] = useState({ firstName: "", lastName: "", mobile: "", email: "", password: "", confirmPassword: "" });
-  const [signupError, setSignupError] = useState("");
-  const [signupSuccess, setSignupSuccess] = useState("");
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const navigate = useNavigate();
 
@@ -512,67 +220,6 @@ function AppContent() {
 
   function handleColorChange(mode) {
     setColorMode(mode);
-  }
-
-  // Login handler
-  async function handleLogin(e) {
-    e.preventDefault();
-    setLoginError("");
-    try {
-      const res = await api.post("/auth/login", { email: loginEmail, password: loginPassword });
-      if (res.data && res.data.data && res.data.data.token) {
-        localStorage.setItem("token", res.data.data.token);
-        // Fetch user profile after login and store in localStorage
-        try {
-          const profileRes = await api.get("/auth/me");
-          if (profileRes.data && profileRes.data.data) {
-            localStorage.setItem("user", JSON.stringify(profileRes.data.data));
-            // Optionally, trigger a custom event for other components
-            window.dispatchEvent(new Event('userStateChanged'));
-          }
-        } catch (profileErr) {
-          // If fetching profile fails, clear token and user
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-          setLoginError("Failed to fetch user profile after login.");
-          return;
-        }
-        setShowLogin(false);
-        setLoginEmail("");
-        setLoginPassword("");
-        setLoginError("");
-      } else {
-        setLoginError("Invalid response from server");
-      }
-    } catch (err) {
-      setLoginError(err.response?.data?.message || "Login failed");
-    }
-  }
-
-  // Signup handler
-  async function handleSignup(e) {
-    e.preventDefault();
-    setSignupError("");
-    setSignupSuccess("");
-    if (signupData.password !== signupData.confirmPassword) {
-      setSignupError("Passwords do not match");
-      return;
-    }
-    try {
-      const res = await api.post("/auth/signup", {
-        firstName: signupData.firstName,
-        lastName: signupData.lastName,
-        mobile: signupData.mobile,
-        email: signupData.email,
-        password: signupData.password,
-      });
-      setSignupSuccess("Signup successful! Please log in.");
-      setShowSignup(false);
-      setShowLogin(true);
-      setSignupData({ firstName: "", lastName: "", mobile: "", email: "", password: "", confirmPassword: "" });
-    } catch (err) {
-      setSignupError(err.response?.data?.message || "Signup failed");
-    }
   }
 
   // Order placement handler
@@ -648,9 +295,70 @@ function AppContent() {
     window.open(pdfUrl, '_blank');
   };
 
+  // Restore handleLogin
+  async function handleLogin(e) {
+    e.preventDefault();
+    setLoginError("");
+    try {
+      const res = await api.post("/auth/login", { email: loginEmail, password: loginPassword });
+      if (res.data && res.data.data && res.data.data.token) {
+        localStorage.setItem("token", res.data.data.token);
+        // Fetch user profile after login and store in localStorage
+        try {
+          const profileRes = await api.get("/auth/me");
+          if (profileRes.data && profileRes.data.data) {
+            localStorage.setItem("user", JSON.stringify(profileRes.data.data));
+            // Optionally, trigger a custom event for other components
+            window.dispatchEvent(new Event('userStateChanged'));
+          }
+        } catch (profileErr) {
+          // If fetching profile fails, clear token and user
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          setLoginError("Failed to fetch user profile after login.");
+          return;
+        }
+        setShowLogin(false);
+        setLoginEmail("");
+        setLoginPassword("");
+        setLoginError("");
+        setIsLoggedIn(true); // Update isLoggedIn state
+      } else {
+        setLoginError("Invalid response from server");
+      }
+    } catch (err) {
+      setLoginError(err.response?.data?.message || "Login failed");
+    }
+  }
+
+  // Restore handleSignup
+  async function handleSignup(e) {
+    e.preventDefault();
+    setSignupError("");
+    setSignupSuccess("");
+    if (signupData.password !== signupData.confirmPassword) {
+      setSignupError("Passwords do not match");
+      return;
+    }
+    try {
+      const res = await api.post("/auth/signup", {
+        firstName: signupData.firstName,
+        lastName: signupData.lastName,
+        mobile: signupData.mobile,
+        email: signupData.email,
+        password: signupData.password,
+      });
+      setSignupSuccess("Signup successful! Please log in.");
+      setShowSignup(false);
+      setShowLogin(true);
+      setSignupData({ firstName: "", lastName: "", mobile: "", email: "", password: "", confirmPassword: "" });
+    } catch (err) {
+      setSignupError(err.response?.data?.message || "Signup failed");
+    }
+  }
+
   return (
     <>
-      <Navbar onProfileClick={() => navigate('/profile')} onLoginClick={() => setShowLogin(true)} />
       <div className="layout-container flex h-full grow flex-col">
         <div className="gap-1 px-4 sm:px-6 flex flex-col lg:flex-row flex-1 justify-center py-5">
           <div className="layout-content-container flex flex-col max-w-[920px] flex-1">
@@ -1013,182 +721,25 @@ function AppContent() {
   );
 }
 
-function OrdersPage() {
-  const navigate = useNavigate();
-  const [orderFilter, setOrderFilter] = React.useState('all');
-  const [orders, setOrders] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
-  const [storeId, setStoreId] = React.useState(null);
-  const [expandedOrderId, setExpandedOrderId] = React.useState(null);
-
-  React.useEffect(() => {
-    async function fetchStore() {
-      try {
-        const res = await api.get('/stores/me');
-        if (res.data && res.data.data && res.data.data.id) {
-          setStoreId(res.data.data.id);
-        } else {
-          setError('No store found for this user.');
-          setLoading(false);
-        }
-      } catch (err) {
-        setError('Failed to fetch store info.');
-        setLoading(false);
-      }
-    }
-    fetchStore();
-  }, []);
-
-  React.useEffect(() => {
-    if (!storeId) return;
-    setLoading(true);
-    setError(null);
-    const params = orderFilter === 'all' ? '' : `?status=${orderFilter}`;
-    api.get(`/orders/shop/${storeId}${params}`)
-      .then(res => {
-        setOrders(res.data.orders || []);
-      })
-      .catch(() => {
-        setError('Failed to fetch orders.');
-      })
-      .finally(() => setLoading(false));
-  }, [storeId, orderFilter]);
-
-  const handlePrint = (pdfUrl) => {
-    window.open(pdfUrl, '_blank');
-  };
-
-  const handleComplete = async (orderId) => {
-    try {
-      const token = localStorage.getItem('token');
-      await api.patch(`/orders/${orderId}/status`, { status: 'completed' }, { headers: { 'Authorization': `Bearer ${token}` } });
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'completed' } : o));
-      alert('Order marked as completed!');
-    } catch (err) {
-      alert('Failed to mark order as completed.');
-    }
-  };
-
-  const filteredOrders = orders;
-
-  return (
-    <div className="relative flex min-h-screen flex-col bg-slate-50 group/design-root overflow-x-hidden" style={{ fontFamily: '"Work Sans", "Noto Sans", sans-serif' }}>
-      <Navbar active="orders" onProfileClick={() => navigate('/profile')} />
-      <div className="px-4 sm:px-10 md:px-20 lg:px-40 flex flex-1 justify-center py-5">
-        <div className="layout-content-container flex flex-col max-w-[1400px] flex-1">
-          <div className="flex flex-wrap justify-between gap-3 p-4">
-            <p className="text-[#0e141b] tracking-light text-[32px] font-bold leading-tight min-w-72">Orders</p>
-          </div>
-          <div className="px-4 py-3 @container">
-            <div className="flex items-center mb-4 gap-2">
-              {['all', 'pending', 'completed'].map(option => (
-                <button
-                  key={option}
-                  className={`px-5 py-2 rounded-xl text-sm font-medium border border-[#d0dbe7] transition-colors duration-150 ${orderFilter === option ? 'bg-[#176fd3] text-white' : 'bg-white text-[#0e141b]'}`}
-                  onClick={() => setOrderFilter(option)}
-                  type="button"
-                >
-                  {option.charAt(0).toUpperCase() + option.slice(1)}
-                </button>
-              ))}
-            </div>
-            <div className="flex overflow-x-auto rounded-xl border border-[#d0dbe7] bg-slate-50">
-              <table className="flex-1 min-w-[1200px]">
-                <thead>
-                  <tr className="bg-slate-50">
-                    <th className="px-4 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Order #</th>
-                    <th className="px-4 py-3 text-left text-[#0e141b] w-[180px] text-sm font-medium leading-normal">User Name</th>
-                    <th className="px-2 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Mobile Number</th>
-                    <th className="px-2 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Date</th>
-                    <th className="px-2 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Time</th>
-                    <th className="px-4 py-3 text-left text-[#0e141b] w-[220px] text-sm font-medium leading-normal">File Name</th>
-                    <th className="px-4 py-3 text-left text-[#0e141b] w-60 text-sm font-medium leading-normal">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredOrders.map(order => (
-                    <React.Fragment key={order.id}>
-                      <tr
-                        className={`border-t border-t-[#d0dbe7] cursor-pointer ${expandedOrderId === order.id ? 'bg-blue-50' : ''}`}
-                        onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
-                      >
-                        <td className="h-[72px] px-4 py-2 w-[120px] text-[#0e141b] text-sm font-normal leading-normal">{order.id}</td>
-                        <td className="h-[72px] px-4 py-2 w-[180px] text-[#4e7097] text-sm font-normal leading-normal">{order.user?.firstName} {order.user?.lastName}</td>
-                        <td className="h-[72px] px-2 py-2 w-[120px] text-[#4e7097] text-sm font-normal leading-normal">{order.user?.mobile}</td>
-                        <td className="h-[72px] px-2 py-2 w-[120px] text-[#4e7097] text-sm font-normal leading-normal">{order.date}</td>
-                        <td className="h-[72px] px-2 py-2 w-[120px] text-[#4e7097] text-sm font-normal leading-normal">{order.time}</td>
-                        <td className="h-[72px] px-4 py-2 w-[220px] text-[#4e7097] text-sm font-normal leading-normal">{order.file}</td>
-                        <td className="h-[72px] px-4 py-2 w-60 text-sm font-normal leading-normal flex items-center justify-start">
-                          <button className="flex w-28 min-w-0 max-w-[480px] cursor-pointer items-center justify-start overflow-hidden rounded-full h-8 px-3 bg-[#e7edf3] text-[#0e141b] text-sm font-medium leading-normal">
-                            <span className="truncate">{order.status}</span>
-                          </button>
-                        </td>
-                      </tr>
-                      {expandedOrderId === order.id && (
-                        <tr>
-                          <td colSpan={7} className="bg-white p-6 border-t border-b border-[#b4cae3]">
-                            <div className="flex flex-col gap-2">
-                              <div><b>Order ID:</b> {order.id}</div>
-                              <div><b>User:</b> {order.user?.firstName} {order.user?.lastName} ({order.user?.email})</div>
-                              <div><b>Mobile:</b> {order.user?.mobile}</div>
-                              <div><b>Date:</b> {order.date}</div>
-                              <div><b>Time:</b> {order.time}</div>
-                              <div><b>File Name:</b> {order.file}</div>
-                              <div><b>Status:</b> {order.status}</div>
-                              <div className="flex gap-3 mt-3">
-                                {order.pdfUrl && (
-                                  <>
-                                    <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={e => { e.stopPropagation(); window.open(order.pdfUrl, '_blank'); }}>Preview</button>
-                                    <button className="px-4 py-2 bg-green-600 text-white rounded" onClick={e => { e.stopPropagation(); handlePrint(order.pdfUrl); }}>Print</button>
-                                  </>
-                                )}
-                                {order.status !== 'completed' && (
-                                  <button className="px-4 py-2 bg-gray-800 text-white rounded" onClick={e => { e.stopPropagation(); handleComplete(order.id); }}>Mark as Completed</button>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ShopOwnerDashboard() {
-  const navigate = useNavigate();
-  return (
-    <div className="relative flex min-h-screen flex-col bg-slate-50 group/design-root overflow-x-hidden" style={{ fontFamily: '"Work Sans", "Noto Sans", sans-serif' }}>
-      <Navbar active="dashboard" onProfileClick={() => navigate('/profile')} />
-      <div className="px-4 sm:px-10 md:px-20 lg:px-40 flex flex-1 justify-center py-5">
-        <div className="layout-content-container flex flex-col max-w-[1400px] flex-1">
-          <div className="flex flex-wrap justify-between gap-3 p-4">
-            <p className="text-[#0e141b] tracking-light text-[32px] font-bold leading-tight min-w-72">Dashboard</p>
-          </div>
-          {/* Dashboard is empty for now */}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = React.useState(!!localStorage.getItem('token'));
+  const navigate = useNavigate();
+  const handleProfileClick = React.useCallback(() => navigate('/profile'), [navigate]);
+  const [showLogin, setShowLogin] = React.useState(false);
+  const handleLoginClick = React.useCallback(() => setShowLogin(true), []);
+
   return (
-    <BrowserRouter>
+    <>
+      <Navbar
+        isLoggedIn={isLoggedIn}
+        onProfileClick={handleProfileClick}
+        onLoginClick={handleLoginClick}
+      />
       <Routes>
-        <Route path="/" element={<AppContent />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/dashboard" element={<ShopOwnerDashboard />} />
-        <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/" element={<MainAppContent isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} onLoginClick={handleLoginClick} showLogin={showLogin} setShowLogin={setShowLogin} />} />
+        <Route path="/profile" element={<ProfilePage isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} onLoginClick={handleLoginClick} />} />
+        <Route path="/orders" element={<ShopPrintOrders />} />
       </Routes>
-    </BrowserRouter>
+    </>
   );
 }

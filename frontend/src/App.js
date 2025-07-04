@@ -4,7 +4,7 @@ import { Document, Page } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import "pdfjs-dist/webpack";
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import api from "./api";
 
 const SHOPS = [
@@ -297,7 +297,18 @@ function ProfilePage() {
   );
 }
 
-function AppContent() {
+function App() {
+  const navigate = useNavigate();
+  return (
+    <Routes>
+      <Route path="/" element={<AppContent navigate={navigate} />} />
+      <Route path="/profile" element={<ProfilePage />} />
+      <Route path="/dashboard" element={<ShopOwnerDashboard />} />
+    </Routes>
+  );
+}
+
+function AppContent({ navigate }) {
   const [pdfFile, setPdfFile] = useState(null);
   const [numPages, setNumPages] = useState(null);
   const [colorMode, setColorMode] = useState("color");
@@ -826,17 +837,5 @@ function ShopOwnerDashboard() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function App() {
-  return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<AppContent />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/dashboard" element={<ShopOwnerDashboard />} />
-      </Routes>
-    </Router>
   );
 }
