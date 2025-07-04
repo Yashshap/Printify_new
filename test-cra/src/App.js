@@ -8,6 +8,7 @@ import api from "./api";
 import ShopRegistrationForm from './ShopRegistrationForm';
 import ShopPrintOrders from './ShopPrintOrders';
 import ProfilePage from './ProfilePage';
+import CatalogPage from './CatalogPage';
 
 // Set the workerSrc for pdfjs to use the CDN version
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -739,6 +740,7 @@ export default function App() {
         <Route path="/" element={<MainAppContent isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} onLoginClick={handleLoginClick} showLogin={showLogin} setShowLogin={setShowLogin} />} />
         <Route path="/profile" element={<ProfilePage isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} onLoginClick={handleLoginClick} />} />
         <Route path="/orders" element={<ShopPrintOrders />} />
+        <Route path="/catalog" element={<CatalogPage />} />
       </Routes>
     </>
   );
