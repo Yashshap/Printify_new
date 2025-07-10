@@ -125,6 +125,13 @@ export const updateOrderStatus = async (orderId, status) => {
   });
 };
 
+export const updateOrder = async (orderId, updateData) => {
+  return await prisma.order.update({
+    where: { id: orderId },
+    data: updateData,
+  });
+};
+
 export const deleteOrderPdf = async (orderId) => {
   // Fetch order to get PDF URL
   const order = await prisma.order.findUnique({ where: { id: orderId } });

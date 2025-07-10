@@ -296,6 +296,89 @@ paths:
         '200':
           description: Order PDF deleted
 
+  /razorpay/orders:
+    post:
+      tags: [Razorpay]
+      summary: Create a Razorpay order
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount: { type: number }
+                currency: { type: string }
+                receipt: { type: string }
+                orderId: { type: string }
+      responses:
+        '200':
+          description: Razorpay order created
+
+  /razorpay/verify-payment:
+    post:
+      tags: [Razorpay]
+      summary: Verify Razorpay payment signature
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                razorpay_order_id: { type: string }
+                razorpay_payment_id: { type: string }
+                razorpay_signature: { type: string }
+      responses:
+        '200':
+          description: Payment verified successfully
+        '400':
+          description: Payment verification failed
+
+  /razorpay/webhook:
+    post:
+      tags: [Razorpay]
+      summary: Handle Razorpay webhooks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event: { type: string }
+                payload: { type: object }
+      responses:
+        '200':
+          description: Webhook received
+
+  /razorpay/transfers:
+    post:
+      tags: [Razorpay]
+      summary: Create Razorpay payment transfers
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paymentId: { type: string }
+                transfers:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      account: { type: string }
+                      amount: { type: number }
+                      currency: { type: string }
+      responses:
+        '200':
+          description: Payment transfer created
+
   /webhooks/payment:
     post:
       tags: [Webhook]

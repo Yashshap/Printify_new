@@ -2,7 +2,18 @@ import * as storeService from '../services/storeService.js';
 
 export const registerStore = async (req, res, next) => {
   try {
-    const store = await storeService.registerStore(req.body, req.user.id);
+    // Extract S3 URLs from uploaded files if present
+    const panDocumentUrl = req.files && req.files.panDocument ? req.files.panDocument[0]?.location : (req.file && req.file.fieldname === 'panDocument' ? req.file.location : undefined);
+    const addressProofUrl = req.files && req.files.addressProof ? req.files.addressProof[0]?.location : (req.file && req.file.fieldname === 'addressProof' ? req.file.location : undefined);
+    const bankProofUrl = req.files && req.files.bankProof ? req.files.bankProof[0]?.location : (req.file && req.file.fieldname === 'bankProof' ? req.file.location : undefined);
+    // Merge with body
+    const storeData = {
+      ...req.body,
+      panDocumentUrl,
+      addressProofUrl,
+      bankProofUrl,
+    };
+    const store = await storeService.registerStore(storeData, req.user.id);
     res.status(201).json({ status: 'success', message: 'Store registered', data: store });
   } catch (err) {
     res.status(400).json({ status: 'error', message: err.message, data: null });

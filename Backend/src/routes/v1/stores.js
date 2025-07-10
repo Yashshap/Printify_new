@@ -1,8 +1,20 @@
 import express from 'express';
 import { registerStore, getPendingStores, approveStore, getAllApprovedStores, getStoreByOwner, updateStoreProfile, updateStorePricing } from '../../controllers/storeController.js';
 import { authenticate, authorizeRoles } from '../../middleware/auth.js';
+import { uploadPanDocument, uploadAddressProof, uploadBankProof } from '../../utils/s3.js';
+import multer from 'multer';
 
 export const router = express.Router();
+
+// Compose a single multer middleware for all three KYC docs
+const kycUpload = multer(); // fallback for fields without files
+
+const kycDocumentsUpload = [
+  uploadPanDocument.single('panDocument'),
+  uploadAddressProof.single('addressProof'),
+  uploadBankProof.single('bankProof'),
+  kycUpload.none(), // allow text fields
+];
 
 /**
  * @openapi
@@ -38,7 +50,7 @@ export const router = express.Router();
  *       201:
  *         description: Store registered
  */
-router.post('/register', authenticate, registerStore);
+router.post('/register', authenticate, kycDocumentsUpload, registerStore);
 
 /**
  * @openapi

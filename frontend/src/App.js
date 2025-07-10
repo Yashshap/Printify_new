@@ -81,7 +81,7 @@ function parsePagesInput(input, numPages) {
   return Array.from(pages).sort((a, b) => a - b);
 }
 
-function Navbar({ active, onProfileClick, onLoginClick }) {
+function Navbar({ active, onProfileClick, onLoginClick, isLoggedIn, user }) {
   const navigate = useNavigate();
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#e7edf3] px-10 py-3 bg-white bg-opacity-95 backdrop-blur">
@@ -299,16 +299,42 @@ function ProfilePage() {
 
 function App() {
   const navigate = useNavigate();
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
+
+  useEffect(() => {
+    const handleLoginStateChange = () => {
+      setIsLoggedIn(!!localStorage.getItem('token'));
+      setUser(JSON.parse(localStorage.getItem('user')));
+    };
+
+    window.addEventListener('storage', handleLoginStateChange);
+    window.addEventListener('userStateChanged', handleLoginStateChange);
+
+    return () => {
+      window.removeEventListener('storage', handleLoginStateChange);
+      window.removeEventListener('userStateChanged', handleLoginStateChange);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setIsLoggedIn(false);
+    setUser(null);
+    navigate('/');
+  };
+
   return (
     <Routes>
-      <Route path="/" element={<AppContent navigate={navigate} />} />
-      <Route path="/profile" element={<ProfilePage />} />
-      <Route path="/dashboard" element={<ShopOwnerDashboard />} />
+      <Route path="/" element={<AppContent navigate={navigate} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} user={user} setUser={setUser} handleLogout={handleLogout} />} />
+      <Route path="/profile" element={<ProfilePage navigate={navigate} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} user={user} setUser={setUser} handleLogout={handleLogout} />} />
+      <Route path="/dashboard" element={<ShopOwnerDashboard navigate={navigate} isLoggedIn={isLoggedIn} user={user} />} />
     </Routes>
   );
 }
 
-function AppContent({ navigate }) {
+function AppContent({ navigate, isLoggedIn, setIsLoggedIn, user, setUser, handleLogout }) {
   const [pdfFile, setPdfFile] = useState(null);
   const [numPages, setNumPages] = useState(null);
   const [colorMode, setColorMode] = useState("color");
@@ -386,6 +412,7 @@ function AppContent({ navigate }) {
       const res = await api.post("/auth/login", { email: loginEmail, password: loginPassword });
       if (res.data && res.data.token) {
         localStorage.setItem("token", res.data.token);
+        localStorage.setItem("user", JSON.stringify(res.data.user));
         setShowLogin(false);
         setLoginEmail("");
         setLoginPassword("");
@@ -765,6 +792,78 @@ function AppContent({ navigate }) {
         </div>
       )}
     </>
+  );
+}
+
+function ShopOwnerDashboard() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [orderFilter, setOrderFilter] = React.useState('all');
+  const orders = [
+    { id: '#12345', user: 'Sophia Clark', mobile: '555-123-4567', status: 'Pending', date: '2024-06-01', time: '10:30 AM', file: 'document1.pdf' },
+    { id: '#12346', user: 'Ethan Miller', mobile: '555-987-6543', status: 'Completed', date: '2024-06-01', time: '11:00 AM', file: 'invoice2.pdf' },
+    { id: '#12347', user: 'Olivia Davis', mobile: '555-246-8013', status: 'Pending', date: '2024-06-02', time: '09:15 AM', file: 'report3.pdf' },
+    { id: '#12348', user: 'Liam Wilson', mobile: '555-369-1470', status: 'Completed', date: '2024-06-02', time: '01:45 PM', file: 'summary4.pdf' },
+    { id: '#12349', user: 'Ava Martinez', mobile: '555-753-9510', status: 'Pending', date: '2024-06-03', time: '03:20 PM', file: 'notes5.pdf' },
+  ];
+  const filteredOrders = orderFilter === 'all' ? orders : orders.filter(o => o.status.toLowerCase() === orderFilter);
+  return (
+    <div className="relative flex min-h-screen flex-col bg-slate-50 group/design-root overflow-x-hidden" style={{ fontFamily: '"Work Sans", "Noto Sans", sans-serif' }}>
+      <Navbar active="dashboard" onProfileClick={() => navigate('/profile')} />
+      <div className="px-40 flex flex-1 justify-center py-5">
+        <div className="layout-content-container flex flex-col max-w-[1400px] flex-1">
+          <div className="flex flex-wrap justify-between gap-3 p-4">
+            <p className="text-[#0e141b] tracking-light text-[32px] font-bold leading-tight min-w-72">Orders</p>
+          </div>
+          <div className="px-4 py-3 @container">
+            <div className="flex items-center mb-4 gap-2">
+              {['all', 'pending', 'completed'].map(option => (
+                <button
+                  key={option}
+                  className={`px-5 py-2 rounded-xl text-sm font-medium border border-[#d0dbe7] transition-colors duration-150 ${orderFilter === option ? 'bg-[#176fd3] text-white' : 'bg-white text-[#0e141b]'}`}
+                  onClick={() => setOrderFilter(option)}
+                  type="button"
+                >
+                  {option.charAt(0).toUpperCase() + option.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div className="flex overflow-x-auto rounded-xl border border-[#d0dbe7] bg-slate-50">
+              <table className="flex-1 min-w-[1200px]">
+                <thead>
+                  <tr className="bg-slate-50">
+                    <th className="px-4 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Order #</th>
+                    <th className="px-4 py-3 text-left text-[#0e141b] w-[180px] text-sm font-medium leading-normal">User Name</th>
+                    <th className="px-2 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Mobile Number</th>
+                    <th className="px-2 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Date</th>
+                    <th className="px-2 py-3 text-left text-[#0e141b] w-[120px] text-sm font-medium leading-normal">Time</th>
+                    <th className="px-4 py-3 text-left text-[#0e141b] w-[220px] text-sm font-medium leading-normal">File Name</th>
+                    <th className="px-4 py-3 text-left text-[#0e141b] w-60 text-sm font-medium leading-normal">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredOrders.map(order => (
+                    <tr className="border-t border-t-[#d0dbe7]" key={order.id}>
+                      <td className="h-[72px] px-4 py-2 w-[120px] text-[#0e141b] text-sm font-normal leading-normal">{order.id}</td>
+                      <td className="h-[72px] px-4 py-2 w-[180px] text-[#4e7097] text-sm font-normal leading-normal">{order.user}</td>
+                      <td className="h-[72px] px-2 py-2 w-[120px] text-[#4e7097] text-sm font-normal leading-normal">{order.mobile}</td>
+                      <td className="h-[72px] px-2 py-2 w-[120px] text-[#4e7097] text-sm font-normal leading-normal">{order.date}</td>
+                      <td className="h-[72px] px-2 py-2 w-[120px] text-[#4e7097] text-sm font-normal leading-normal">{order.time}</td>
+                      <td className="h-[72px] px-4 py-2 w-[220px] text-[#4e7097] text-sm font-normal leading-normal">{order.file}</td>
+                      <td className="h-[72px] px-4 py-2 w-60 text-sm font-normal leading-normal flex items-center justify-start">
+                        <button className="flex w-28 min-w-0 max-w-[480px] cursor-pointer items-center justify-start overflow-hidden rounded-full h-8 px-3 bg-[#e7edf3] text-[#0e141b] text-sm font-medium leading-normal">
+                          <span className="truncate">{order.status}</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

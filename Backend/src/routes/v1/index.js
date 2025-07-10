@@ -4,6 +4,7 @@ import { router as storeRouter } from './stores.js';
 import { router as orderRouter } from './orders.js';
 import { router as usersRouter } from './users.js';
 import { router as webhooksRouter } from './webhooks.js';
+import razorpayRouter from './razorpayRoutes.js';
 
 export const router = express.Router();
 
@@ -11,4 +12,5 @@ router.use('/auth', authRouter);
 router.use('/stores', storeRouter);
 router.use('/orders', orderRouter);
 router.use('/users', usersRouter);
-router.use('/webhooks', webhooksRouter); 
+router.use('/webhooks', webhooksRouter);
+router.use('/payments', razorpayRouter); 

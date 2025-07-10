@@ -36,3 +36,67 @@
     transform: rotate(360deg);
   }
 }
+
+@keyframes fadein-slow {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(20px) scale(1.04); }
+}
+@keyframes float-slower {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-16px) scale(1.03); }
+}
+@keyframes gradient-move {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@keyframes print-paper {
+  0% { transform: translateY(-8px); }
+  50% { transform: translateY(8px); }
+  100% { transform: translateY(-8px); }
+}
+@keyframes gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.animate-fadein-slow { animation: fadein-slow 1.2s cubic-bezier(.4,0,.2,1) both; }
+.animate-float-slow { animation: float-slow 8s ease-in-out infinite; }
+.animate-float-slower { animation: float-slower 12s ease-in-out infinite; }
+.animate-gradient-move { animation: gradient-move 10s ease-in-out infinite; background-size: 200% 200%; }
+.animate-print-paper { animation: print-paper 1.2s cubic-bezier(.4,0,.2,1) infinite; }
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: gradient-x 1.2s linear infinite;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+:root {
+  /* Change this variable to preview different fonts: 'Inter', 'Manrope', 'Lato', 'Work Sans' */
+  --preview-font: 'Inter';
+}
+body {
+  font-family: var(--preview-font), 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+}
+/*
+To preview a different font, change --preview-font above to:
+  'Manrope'
+  'Lato'
+  'Work Sans'
+*/

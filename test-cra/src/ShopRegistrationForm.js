@@ -1,14 +1,53 @@
 import React from 'react';
+import api from './api';
 
 export default function ShopRegistrationForm({
   shopReg,
   setShopReg,
   isRegisteringStore,
+  setIsRegisteringStore,
+  setShowShopReg,
   onSubmit,
   onCancel,
   toast,
   setToast
 }) {
+  const [panFile, setPanFile] = React.useState(null);
+  const [addressProofFile, setAddressProofFile] = React.useState(null);
+  const [bankProofFile, setBankProofFile] = React.useState(null);
+  // Remove unused DigiLocker setters for now
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setToast({ message: '', type: 'success' });
+    try {
+      const formData = new FormData();
+      // Add text fields
+      Object.entries(shopReg).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
+      // Add KYC files (manual or DigiLocker-fetched)
+      if (panFile) formData.append('panDocument', panFile);
+      // else if (panDigi) formData.append('panDocument', panDigi); // Removed as per edit hint
+      if (addressProofFile) formData.append('addressProof', addressProofFile);
+      // else if (addressProofDigi) formData.append('addressProof', addressProofDigi); // Removed as per edit hint
+      if (bankProofFile) formData.append('bankProof', bankProofFile);
+      // else if (bankProofDigi) formData.append('bankProof', bankProofDigi); // Removed as per edit hint
+      setIsRegisteringStore(true);
+      const token = localStorage.getItem('token');
+      await api.post('/stores/register', formData, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+      });
+      setToast({ message: 'Store registered successfully!', type: 'success' });
+      setShowShopReg(false);
+      // Optionally reset form state here
+    } catch (err) {
+      setToast({ message: err.response?.data?.message || 'Failed to register store.', type: 'error' });
+    } finally {
+      setIsRegisteringStore(false);
+    }
+  }
+
   return (
     <>
       <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
@@ -105,11 +144,115 @@ export default function ShopRegistrationForm({
           />
         </label>
       </div>
+      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+        <label className="flex flex-col min-w-40 flex-1">
+          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Owner Name (required)</p>
+          <input
+            placeholder="Enter owner name"
+            className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal"
+            value={shopReg.ownerName || ''}
+            onChange={e => setShopReg(s => ({ ...s, ownerName: e.target.value }))}
+          />
+        </label>
+      </div>
+      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+        <label className="flex flex-col min-w-40 flex-1">
+          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">PAN Document (required)</p>
+          <input type="file" accept="application/pdf,image/*" onChange={e => setPanFile(e.target.files[0])} disabled={!!panFile} />
+          <button type="button" onClick={() => { /* TODO: DigiLocker fetch logic for PAN */ }} disabled={!!panFile}>Fetch from DigiLocker</button>
+          {panFile && <span>Selected: {panFile.name}</span>}
+          {/* Removed panDigi && <span>Fetched from DigiLocker</span> */}
+        </label>
+      </div>
+      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+        <label className="flex flex-col min-w-40 flex-1">
+          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Bank Account Number (required)</p>
+          <input
+            placeholder="Enter bank account number"
+            className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal"
+            value={shopReg.bankAccountNumber || ''}
+            onChange={e => setShopReg(s => ({ ...s, bankAccountNumber: e.target.value }))}
+          />
+        </label>
+      </div>
+      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+        <label className="flex flex-col min-w-40 flex-1">
+          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">IFSC (required)</p>
+          <input
+            placeholder="Enter IFSC code"
+            className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal"
+            value={shopReg.ifsc || ''}
+            onChange={e => setShopReg(s => ({ ...s, ifsc: e.target.value }))}
+          />
+        </label>
+      </div>
+      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+        <label className="flex flex-col min-w-40 flex-1">
+          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">GST Number (optional)</p>
+          <input
+            placeholder="Enter GST number"
+            className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal"
+            value={shopReg.gstNumber || ''}
+            onChange={e => setShopReg(s => ({ ...s, gstNumber: e.target.value }))}
+          />
+        </label>
+      </div>
+      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+        <label className="flex flex-col min-w-40 flex-1">
+          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">KYC Address (required)</p>
+          <input
+            placeholder="Enter KYC address"
+            className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal"
+            value={shopReg.kycAddress || ''}
+            onChange={e => setShopReg(s => ({ ...s, kycAddress: e.target.value }))}
+          />
+        </label>
+      </div>
+      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+        <label className="flex flex-col min-w-40 flex-1">
+          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Contact Email (required)</p>
+          <input
+            placeholder="Enter contact email"
+            className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal"
+            value={shopReg.contactEmail || ''}
+            onChange={e => setShopReg(s => ({ ...s, contactEmail: e.target.value }))}
+          />
+        </label>
+      </div>
+      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+        <label className="flex flex-col min-w-40 flex-1">
+          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Contact Phone (required)</p>
+          <input
+            placeholder="Enter contact phone number"
+            className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#0e141b] focus:outline-0 focus:ring-0 border border-[#d0dbe7] bg-slate-50 focus:border-[#d0dbe7] h-14 placeholder:text-[#4e7097] p-[15px] text-base font-normal leading-normal"
+            value={shopReg.contactPhone || ''}
+            onChange={e => setShopReg(s => ({ ...s, contactPhone: e.target.value }))}
+          />
+        </label>
+      </div>
+      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+        <label className="flex flex-col min-w-40 flex-1">
+          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Address Proof Document (required)</p>
+          <input type="file" accept="application/pdf,image/*" onChange={e => setAddressProofFile(e.target.files[0])} disabled={!!addressProofFile} />
+          <button type="button" onClick={() => { /* TODO: DigiLocker fetch logic for Address Proof */ }} disabled={!!addressProofFile}>Fetch from DigiLocker</button>
+          {addressProofFile && <span>Selected: {addressProofFile.name}</span>}
+          {/* Removed addressProofDigi && <span>Fetched from DigiLocker</span> */}
+        </label>
+      </div>
+      <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+        <label className="flex flex-col min-w-40 flex-1">
+          <p className="text-[#0e141b] text-base font-medium leading-normal pb-2">Bank Proof Document (required)</p>
+          <input type="file" accept="application/pdf,image/*" onChange={e => setBankProofFile(e.target.files[0])} disabled={!!bankProofFile} />
+          <button type="button" onClick={() => { /* TODO: DigiLocker fetch logic for Bank Proof */ }} disabled={!!bankProofFile}>Fetch from DigiLocker</button>
+          {bankProofFile && <span>Selected: {bankProofFile.name}</span>}
+          {/* Removed bankProofDigi && <span>Fetched from DigiLocker</span> */}
+        </label>
+      </div>
       <div className="flex justify-stretch">
         <div className="flex flex-1 gap-3 flex-wrap px-4 py-3 justify-start">
           <button
             className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#176fd3] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em]"
-            onClick={onSubmit}
+            onClick={handleSubmit}
             disabled={isRegisteringStore}
           >
             {isRegisteringStore ? 'Launching...' : 'Launch Store'}

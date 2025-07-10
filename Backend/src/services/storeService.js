@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { withPrefix } from '../utils/idPrefix.js';
+import { createRazorpaySubAccount } from './razorpayService.js';
 
 const prisma = new PrismaClient();
 
@@ -15,9 +16,19 @@ export const registerStore = async (storeData, ownerId) => {
     shopAddress,
     supportPhone,
     bankAccount,
-    billingAddress
+    billingAddress,
+    // KYC fields
+    ownerName,
+    pan,
+    bankAccountNumber,
+    ifsc,
+    businessType,
+    contactEmail,
+    contactPhone,
+    kycAddress
   } = storeData;
-  const store = await prisma.store.create({
+  // 1. Create the store in the DB (status: pending_approval, kyc_status: pending)
+  let store = await prisma.store.create({
     data: {
       id: withPrefix('SHP'),
       storeName,
@@ -30,8 +41,46 @@ export const registerStore = async (storeData, ownerId) => {
       billingAddress,
       ownerId,
       status: 'pending_approval',
+      ownerName,
+      pan,
+      bankAccountNumber,
+      ifsc,
+      businessType,
+      contactEmail,
+      contactPhone,
+      kycAddress,
+      kyc_status: 'pending',
     },
   });
+  // 2. Call Razorpay Route API to create sub-account
+  try {
+    const razorpayResp = await createRazorpaySubAccount({
+      ownerName,
+      businessName,
+      gstNumber,
+      shopAddress,
+      supportPhone,
+      bankAccountNumber,
+      ifsc,
+      businessType,
+      contactEmail,
+      contactPhone,
+      kycAddress,
+      pan
+    });
+    // 3. Update store with Razorpay account ID and KYC status
+    store = await prisma.store.update({
+      where: { id: store.id },
+      data: {
+        razorpayAccountId: razorpayResp.id,
+        kyc_status: razorpayResp.kyc?.status || 'pending',
+      },
+    });
+  } catch (err) {
+    // Optionally: log error, notify admin, etc.
+    // Store remains with kyc_status: 'pending' and no razorpayAccountId
+    console.error('Razorpay sub-account creation failed:', err);
+  }
   return store;
 };
 
@@ -78,5 +127,12 @@ export const updateStorePricing = async (storeId, data) => {
   return await prisma.store.update({
     where: { id: storeId },
     data: { blackWhitePrice, colorPrice },
+  });
+};
+
+export const updateStoreKycStatus = async (razorpayAccountId, status) => {
+  return await prisma.store.updateMany({
+    where: { razorpayAccountId },
+    data: { kyc_status: status },
   });
 }; 

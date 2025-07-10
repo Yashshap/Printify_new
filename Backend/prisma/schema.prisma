@@ -43,6 +43,19 @@ model Store {
   metadata          Json?
   blackWhitePrice   Float?
   colorPrice        Float?
+  razorpayAccountId String?
+  ownerName         String?
+  pan               String?
+  bankAccountNumber String?
+  ifsc              String?
+  businessType      String?
+  kyc_status        String   @default("pending")
+  contactEmail      String?
+  contactPhone      String?
+  kycAddress        String?
+  panDocumentUrl    String?
+  addressProofUrl   String?
+  bankProofUrl      String?
 }
 
 model Order {
@@ -61,6 +74,8 @@ model Order {
   price            Float?
   paymentStatus    String?
   paymentMethod    String?
+  razorpayOrderId  String?
+  razorpayPaymentId String?
   discount         Float?
   finalPrice       Float?
 }
