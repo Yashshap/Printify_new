@@ -93,10 +93,44 @@ export const getUserOrders = async ({ userId, status, skip = 0, take = 20 }) => 
   const where = { userId, isDeleted: false };
   if (status) where.status = status;
   const [orders, total] = await Promise.all([
-    prisma.order.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+    prisma.order.findMany({ 
+      where, 
+      orderBy: { createdAt: 'desc' }, 
+      skip, 
+      take,
+      include: {
+        store: {
+          select: {
+            id: true,
+            storeName: true,
+            storeProfileImage: true
+          }
+        }
+      }
+    }),
     prisma.order.count({ where })
   ]);
-  return { orders, total };
+  
+  // Generate signed URLs for each order's PDF
+  const signedOrders = await Promise.all(orders.map(async order => {
+    if (order.pdfUrl) {
+      try {
+        const url = new URL(order.pdfUrl);
+        const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+        const signedUrl = s3.getSignedUrl('getObject', {
+          Bucket: S3_BUCKET,
+          Key: key,
+          Expires: 300 // 5 minutes
+        });
+        return { ...order, pdfUrl: signedUrl };
+      } catch (e) {
+        return { ...order, pdfUrl: null };
+      }
+    }
+    return order;
+  }));
+  
+  return { orders: signedOrders, total };
 };
 
 export const getOrderById = async (orderId) => {

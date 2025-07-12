@@ -19,6 +19,11 @@ function ProfilePage({ navigate, isLoggedIn, setIsLoggedIn, user, setUser, handl
   const [isRegisteringStore, setIsRegisteringStore] = useState(false);
   const [shopRegToast, setShopRegToast] = useState({ message: '', type: 'success' });
   const [debugLogs, setDebugLogs] = useState([]);
+  
+  // Orders state
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState(null);
 
   // Helper to add logs to the debug UI
   const addDebugLog = (msg, data) => {
@@ -77,6 +82,63 @@ function ProfilePage({ navigate, isLoggedIn, setIsLoggedIn, user, setUser, handl
         });
     }
   }, [user]);
+
+  // Fetch user orders when orders tab is active
+  useEffect(() => {
+    const fetchUserOrders = async () => {
+      if (activeTab !== 'orders' || !user) return;
+      
+      try {
+        setOrdersLoading(true);
+        setOrdersError(null);
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setOrdersError('Please login to view orders');
+          return;
+        }
+
+        const response = await api.get('/orders/user', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        addDebugLog('[ProfilePage] Orders API response', response.data);
+        
+        if (response.data.status === 'success') {
+          setOrders(response.data.orders || []);
+        } else {
+          setOrdersError(response.data.message || 'Failed to fetch orders');
+        }
+      } catch (error) {
+        addDebugLog('[ProfilePage] Failed to fetch orders', error);
+        setOrdersError(error.response?.data?.message || 'Failed to fetch orders');
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+
+    fetchUserOrders();
+  }, [activeTab, user]);
+
+  // Helper functions for orders
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
+  const formatTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getStatusColor = (status) => {
+    switch (status.toLowerCase()) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   const handleProfileUpdate = async () => {
     try {
@@ -190,6 +252,14 @@ function ProfilePage({ navigate, isLoggedIn, setIsLoggedIn, user, setUser, handl
     }
   }
 
+  // Add CSS for loading animation
+  const loadingStyles = `
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  `;
+
   // Add a debug box to the UI
   const debugBox = (
     <div style={{
@@ -236,6 +306,7 @@ function ProfilePage({ navigate, isLoggedIn, setIsLoggedIn, user, setUser, handl
 
   return (
     <>
+      <style>{loadingStyles}</style>
       <div
         className="relative flex min-h-screen flex-col group/design-root overflow-x-hidden"
         style={{ fontFamily: '"Inter", "Work Sans", "Noto Sans", sans-serif' }}
@@ -335,6 +406,7 @@ function ProfilePage({ navigate, isLoggedIn, setIsLoggedIn, user, setUser, handl
                 height: '600px',
                 display: 'flex',
                 flexDirection: 'column',
+                overflow: 'hidden',
               }}>
                 {/* Segmented Control */}
                 <div style={{
@@ -418,9 +490,10 @@ function ProfilePage({ navigate, isLoggedIn, setIsLoggedIn, user, setUser, handl
                 </div>
 
                 {/* Content Area */}
-                {activeTab === 'profile' ? (
-                  /* Personal Information Content */
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  {activeTab === 'profile' ? (
+                    /* Personal Information Content */
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
                     <h2 style={{
                       fontSize: '1.5rem',
                       fontWeight: 700,
@@ -639,7 +712,7 @@ function ProfilePage({ navigate, isLoggedIn, setIsLoggedIn, user, setUser, handl
                   </div>
                 ) : (
                   /* My Orders Content */
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
                     <h2 style={{
                       fontSize: '1.5rem',
                       fontWeight: 700,
@@ -655,75 +728,378 @@ function ProfilePage({ navigate, isLoggedIn, setIsLoggedIn, user, setUser, handl
                       </svg>
                       My Orders
                     </h2>
-                    <div style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '48px 24px',
-                      textAlign: 'center',
-                      flex: 1
-                    }}>
+
+                    {ordersLoading ? (
                       <div style={{
-                        width: '80px',
-                        height: '80px',
-                        borderRadius: '50%',
-                        backgroundColor: '#e0e7ff',
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        marginBottom: '24px'
+                        padding: '48px 24px',
+                        textAlign: 'center',
+                        flex: 1
                       }}>
-                        <svg style={{ width: '40px', height: '40px', color: '#176fd3' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          border: '4px solid #e0e7ff',
+                          borderTop: '4px solid #176fd3',
+                          borderRadius: '50%',
+                          animation: 'spin 1s linear infinite',
+                          marginBottom: '16px'
+                        }}></div>
+                        <p style={{ color: '#4e7097', fontSize: '1rem', fontWeight: 500 }}>
+                          Loading your orders...
+                        </p>
                       </div>
-                      <h3 style={{
-                        fontSize: '1.3rem',
-                        fontWeight: 600,
-                        color: '#0e141b',
-                        margin: '0 0 12px 0'
+                    ) : ordersError ? (
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '48px 24px',
+                        textAlign: 'center',
+                        flex: 1
                       }}>
-                        No Orders Yet
-                      </h3>
-                      <p style={{
-                        color: '#4e7097',
-                        fontSize: '1rem',
-                        fontWeight: 500,
-                        margin: '0 0 24px 0',
-                        maxWidth: '400px'
-                      }}>
-                        Your order history will appear here once you place your first order.
-                      </p>
-                      <button
-                        style={{
-                          padding: '12px 24px',
-                          fontSize: '1rem',
+                        <div style={{
+                          width: '80px',
+                          height: '80px',
+                          borderRadius: '50%',
+                          backgroundColor: '#fee2e2',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginBottom: '24px'
+                        }}>
+                          <svg style={{ width: '40px', height: '40px', color: '#ef4444' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                        </div>
+                        <h3 style={{
+                          fontSize: '1.3rem',
                           fontWeight: 600,
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: 999,
-                          background: 'linear-gradient(90deg, #176fd3 0%, #4e7097 100%)',
-                          boxShadow: '0 4px 16px 0 rgba(23,111,211,0.3)',
-                          cursor: 'pointer',
-                          transition: 'transform 0.2s, box-shadow 0.2s',
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.transform = 'scale(1.05)';
-                          e.currentTarget.style.boxShadow = '0 6px 20px 0 rgba(23,111,211,0.4)';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.transform = 'none';
-                          e.currentTarget.style.boxShadow = '0 4px 16px 0 rgba(23,111,211,0.3)';
-                        }}
-                        onClick={() => navigate('/')}
-                      >
-                        Start Printing
-                      </button>
-                    </div>
+                          color: '#0e141b',
+                          margin: '0 0 12px 0'
+                        }}>
+                          Error Loading Orders
+                        </h3>
+                        <p style={{
+                          color: '#4e7097',
+                          fontSize: '1rem',
+                          fontWeight: 500,
+                          margin: '0 0 24px 0',
+                          maxWidth: '400px'
+                        }}>
+                          {ordersError}
+                        </p>
+                        <button
+                          style={{
+                            padding: '12px 24px',
+                            fontSize: '1rem',
+                            fontWeight: 600,
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: 999,
+                            background: 'linear-gradient(90deg, #176fd3 0%, #4e7097 100%)',
+                            boxShadow: '0 4px 16px 0 rgba(23,111,211,0.3)',
+                            cursor: 'pointer',
+                            transition: 'transform 0.2s, box-shadow 0.2s',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                            e.currentTarget.style.boxShadow = '0 6px 20px 0 rgba(23,111,211,0.4)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.transform = 'none';
+                            e.currentTarget.style.boxShadow = '0 4px 16px 0 rgba(23,111,211,0.3)';
+                          }}
+                          onClick={() => setActiveTab('orders')}
+                        >
+                          Try Again
+                        </button>
+                      </div>
+                    ) : orders.length === 0 ? (
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '48px 24px',
+                        textAlign: 'center',
+                        flex: 1
+                      }}>
+                        <div style={{
+                          width: '80px',
+                          height: '80px',
+                          borderRadius: '50%',
+                          backgroundColor: '#e0e7ff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginBottom: '24px'
+                        }}>
+                          <svg style={{ width: '40px', height: '40px', color: '#176fd3' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <h3 style={{
+                          fontSize: '1.3rem',
+                          fontWeight: 600,
+                          color: '#0e141b',
+                          margin: '0 0 12px 0'
+                        }}>
+                          No Orders Yet
+                        </h3>
+                        <p style={{
+                          color: '#4e7097',
+                          fontSize: '1rem',
+                          fontWeight: 500,
+                          margin: '0 0 24px 0',
+                          maxWidth: '400px'
+                        }}>
+                          Your order history will appear here once you place your first order.
+                        </p>
+                        <button
+                          style={{
+                            padding: '12px 24px',
+                            fontSize: '1rem',
+                            fontWeight: 600,
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: 999,
+                            background: 'linear-gradient(90deg, #176fd3 0%, #4e7097 100%)',
+                            boxShadow: '0 4px 16px 0 rgba(23,111,211,0.3)',
+                            cursor: 'pointer',
+                            transition: 'transform 0.2s, box-shadow 0.2s',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                            e.currentTarget.style.boxShadow = '0 6px 20px 0 rgba(23,111,211,0.4)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.transform = 'none';
+                            e.currentTarget.style.boxShadow = '0 4px 16px 0 rgba(23,111,211,0.3)';
+                          }}
+                          onClick={() => navigate('/')}
+                        >
+                          Start Printing
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ flex: 1, overflow: 'auto' }}>
+                        <div style={{
+                          display: 'grid',
+                          gap: '16px',
+                          padding: '0 4px'
+                        }}>
+                          {orders.map((order) => (
+                            <div key={order.id} style={{
+                              background: 'rgba(255,255,255,0.95)',
+                              borderRadius: 16,
+                              padding: '20px',
+                              border: '1px solid #e0e7ff',
+                              boxShadow: '0 2px 8px 0 rgba(23,111,211,0.08)',
+                              transition: 'transform 0.2s, box-shadow 0.2s',
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                              e.currentTarget.style.boxShadow = '0 4px 16px 0 rgba(23,111,211,0.12)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.transform = 'none';
+                              e.currentTarget.style.boxShadow = '0 2px 8px 0 rgba(23,111,211,0.08)';
+                            }}>
+                              <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'flex-start',
+                                marginBottom: '12px'
+                              }}>
+                                <div>
+                                  <h3 style={{
+                                    fontSize: '1.1rem',
+                                    fontWeight: 600,
+                                    color: '#0e141b',
+                                    margin: '0 0 4px 0'
+                                  }}>
+                                    Order #{order.id.slice(-6)}
+                                  </h3>
+                                  <p style={{
+                                    color: '#4e7097',
+                                    fontSize: '0.9rem',
+                                    fontWeight: 500,
+                                    margin: 0
+                                  }}>
+                                    {formatDate(order.createdAt)} at {formatTime(order.createdAt)}
+                                  </p>
+                                </div>
+                                <span style={{
+                                  padding: '4px 12px',
+                                  borderRadius: 999,
+                                  fontSize: '0.8rem',
+                                  fontWeight: 600,
+                                  textTransform: 'capitalize',
+                                  ...getStatusColor(order.status).split(' ').reduce((acc, className) => {
+                                    if (className.startsWith('bg-')) {
+                                      acc.backgroundColor = className.includes('yellow') ? '#fef3c7' : 
+                                                           className.includes('blue') ? '#dbeafe' : 
+                                                           className.includes('green') ? '#dcfce7' : 
+                                                           className.includes('red') ? '#fee2e2' : '#f3f4f6';
+                                    } else if (className.startsWith('text-')) {
+                                      acc.color = className.includes('yellow') ? '#92400e' : 
+                                                className.includes('blue') ? '#1e40af' : 
+                                                className.includes('green') ? '#166534' : 
+                                                className.includes('red') ? '#991b1b' : '#374151';
+                                    }
+                                    return acc;
+                                  }, {})
+                                }}>
+                                  {order.status}
+                                </span>
+                              </div>
+                              
+                              <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                                gap: '12px',
+                                marginBottom: '12px'
+                              }}>
+                                <div>
+                                  <p style={{
+                                    color: '#4e7097',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 500,
+                                    margin: '0 0 4px 0',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                  }}>
+                                    Store
+                                  </p>
+                                  <p style={{
+                                    color: '#0e141b',
+                                    fontSize: '0.9rem',
+                                    fontWeight: 600,
+                                    margin: 0
+                                  }}>
+                                    {order.store?.storeName || 'Unknown Store'}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p style={{
+                                    color: '#4e7097',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 500,
+                                    margin: '0 0 4px 0',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                  }}>
+                                    Pages
+                                  </p>
+                                  <p style={{
+                                    color: '#0e141b',
+                                    fontSize: '0.9rem',
+                                    fontWeight: 600,
+                                    margin: 0
+                                  }}>
+                                    {order.pageRange}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p style={{
+                                    color: '#4e7097',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 500,
+                                    margin: '0 0 4px 0',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                  }}>
+                                    Mode
+                                  </p>
+                                  <p style={{
+                                    color: '#0e141b',
+                                    fontSize: '0.9rem',
+                                    fontWeight: 600,
+                                    margin: 0,
+                                    textTransform: 'capitalize'
+                                  }}>
+                                    {order.colorMode.replace('_', ' ')}
+                                  </p>
+                                </div>
+                                {order.finalPrice && (
+                                  <div>
+                                    <p style={{
+                                      color: '#4e7097',
+                                      fontSize: '0.8rem',
+                                      fontWeight: 500,
+                                      margin: '0 0 4px 0',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.5px'
+                                    }}>
+                                      Price
+                                    </p>
+                                    <p style={{
+                                      color: '#0e141b',
+                                      fontSize: '0.9rem',
+                                      fontWeight: 600,
+                                      margin: 0
+                                    }}>
+                                      ₹{order.finalPrice}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+
+                              {order.pdfUrl && (
+                                <div style={{
+                                  display: 'flex',
+                                  gap: '8px',
+                                  marginTop: '12px'
+                                }}>
+                                  <a
+                                    href={order.pdfUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      padding: '8px 16px',
+                                      fontSize: '0.9rem',
+                                      fontWeight: 600,
+                                      color: '#176fd3',
+                                      backgroundColor: '#e0e7ff',
+                                      border: '1px solid #176fd3',
+                                      borderRadius: 8,
+                                      textDecoration: 'none',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.2s',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '6px'
+                                    }}
+                                    onMouseEnter={e => {
+                                      e.currentTarget.style.backgroundColor = '#176fd3';
+                                      e.currentTarget.style.color = '#fff';
+                                    }}
+                                    onMouseLeave={e => {
+                                      e.currentTarget.style.backgroundColor = '#e0e7ff';
+                                      e.currentTarget.style.color = '#176fd3';
+                                    }}
+                                  >
+                                    <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    Download PDF
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
+            </div>
 
               {isEditing && (
                 <div style={{ marginBottom: 32 }}>
