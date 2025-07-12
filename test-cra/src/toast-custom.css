@@ -1,0 +1,50 @@
+/* Ensure toasts appear above all content */
+.Toastify__toast-container {
+  z-index: 9999 !important;
+  position: fixed !important;
+  top: 80px !important; /* Adjust this value based on your navbar height */
+}
+
+.custom-toast {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 24px rgba(23, 111, 211, 0.10), 0 1.5px 4px rgba(0,0,0,0.04);
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  font-size: 1rem;
+  padding: 16px 20px !important;
+  min-width: 260px;
+  max-width: 400px;
+  z-index: 9999 !important;
+  position: relative !important;
+}
+
+.custom-toast-body {
+  color: #0e141b;
+  font-weight: 500;
+}
+
+/* Info and Success: Blue accent */
+.custom-toast--info, .custom-toast--success {
+  background: #eaf3fc !important;
+  border-left: 6px solid #176fd3 !important;
+  color: #176fd3 !important;
+}
+
+/* Error: Red accent */
+.custom-toast--error {
+  background: #fdeaea !important;
+  border-left: 6px solid #e02424 !important;
+  color: #e02424 !important;
+}
+
+/* Warning: Orange accent */
+.custom-toast--warning {
+  background: #fff7e6 !important;
+  border-left: 6px solid #fbbf24 !important;
+  color: #b45309 !important;
+}
+
+/* Override react-toastify type classes to use our custom ones */
+.Toastify__toast--info { composes: custom-toast custom-toast--info; }
+.Toastify__toast--success { composes: custom-toast custom-toast--success; }
+.Toastify__toast--error { composes: custom-toast custom-toast--error; }
+.Toastify__toast--warning { composes: custom-toast custom-toast--warning; } 

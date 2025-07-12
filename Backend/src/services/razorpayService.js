@@ -9,6 +9,15 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
+class RazorpayError extends Error {
+  constructor(message, code, details) {
+    super(message);
+    this.name = 'RazorpayError';
+    this.code = code;
+    this.details = details;
+  }
+}
+
 export const createRazorpayOrder = async (amount, currency, receipt) => {
   const options = {
     amount: amount * 100, // amount in smallest currency unit (e.g., paise for INR)
@@ -20,7 +29,11 @@ export const createRazorpayOrder = async (amount, currency, receipt) => {
     return order;
   } catch (error) {
     console.error('Error creating Razorpay order:', error);
-    throw new Error('Failed to create Razorpay order');
+    throw new RazorpayError(
+      'Failed to create Razorpay order: ' + (error.error?.description || error.message),
+      error.error?.code || error.code,
+      error.error || error
+    );
   }
 };
 
@@ -44,7 +57,11 @@ export const createTransfer = async (paymentId, transfers) => {
     return transfer;
   } catch (error) {
     console.error('Error creating Razorpay transfer:', error);
-    throw new Error('Failed to create Razorpay transfer');
+    throw new RazorpayError(
+      'Failed to create Razorpay transfer: ' + (error.error?.description || error.message),
+      error.error?.code || error.code,
+      error.error || error
+    );
   }
 };
 
@@ -54,7 +71,11 @@ export const fetchPayment = async (paymentId) => {
     return payment;
   } catch (error) {
     console.error('Error fetching Razorpay payment:', error);
-    throw new Error('Failed to fetch Razorpay payment');
+    throw new RazorpayError(
+      'Failed to fetch Razorpay payment: ' + (error.error?.description || error.message),
+      error.error?.code || error.code,
+      error.error || error
+    );
   }
 };
 
@@ -91,6 +112,12 @@ export const createRazorpaySubAccount = async (kycData) => {
     return { id: account.id, kyc: account.kyc }; // kyc.status: 'pending', 'verified', etc.
   } catch (error) {
     console.error('Error creating Razorpay sub-account:', error);
-    throw new Error('Failed to create Razorpay sub-account');
+    throw new RazorpayError(
+      'Failed to create Razorpay sub-account: ' + (error.error?.description || error.message),
+      error.error?.code || error.code,
+      error.error || error
+    );
   }
 };
+
+export { RazorpayError };

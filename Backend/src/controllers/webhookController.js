@@ -6,6 +6,6 @@ export const handlePaymentWebhook = async (req, res, next) => {
     await webhookService.createWebhook(event, payload);
     res.json({ status: 'success', message: 'Webhook received' });
   } catch (err) {
-    res.status(400).json({ status: 'error', message: err.message, data: null });
+    next(err);
   }
 }; 

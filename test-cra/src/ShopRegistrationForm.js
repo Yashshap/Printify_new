@@ -1,5 +1,6 @@
 import React from 'react';
 import api from './api';
+import { toast } from 'react-toastify';
 
 export default function ShopRegistrationForm({
   shopReg,
@@ -8,9 +9,7 @@ export default function ShopRegistrationForm({
   setIsRegisteringStore,
   setShowShopReg,
   onSubmit,
-  onCancel,
-  toast,
-  setToast
+  onCancel
 }) {
   const [panFile, setPanFile] = React.useState(null);
   const [addressProofFile, setAddressProofFile] = React.useState(null);
@@ -19,7 +18,6 @@ export default function ShopRegistrationForm({
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setToast({ message: '', type: 'success' });
     try {
       const formData = new FormData();
       // Add text fields
@@ -38,11 +36,16 @@ export default function ShopRegistrationForm({
       await api.post('/stores/register', formData, {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
       });
-      setToast({ message: 'Store registered successfully!', type: 'success' });
+      toast('Store registered successfully! It will be reviewed by admin.', { type: 'success' });
       setShowShopReg(false);
       // Optionally reset form state here
     } catch (err) {
-      setToast({ message: err.response?.data?.message || 'Failed to register store.', type: 'error' });
+      // Show all backend errors in toast
+      if (err.response?.data?.validationErrors) {
+        toast(err.response.data.validationErrors.map(v => v.message).join('\n'), { type: 'error' });
+      } else {
+        toast(err.response?.data?.message || 'Failed to register store.', { type: 'error' });
+      }
     } finally {
       setIsRegisteringStore(false);
     }
@@ -262,21 +265,6 @@ export default function ShopRegistrationForm({
           </button>
         </div>
       </div>
-      {toast && toast.message && (
-        <div style={{
-          position: 'fixed',
-          top: 20,
-          right: 20,
-          zIndex: 9999,
-          background: toast.type === 'success' ? '#22c55e' : '#ef4444',
-          color: 'white',
-          padding: '16px 24px',
-          borderRadius: 8,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-          fontWeight: 600,
-          fontSize: 16
-        }}>{toast.message}</div>
-      )}
     </>
   );
 } 

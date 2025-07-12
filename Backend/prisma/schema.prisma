@@ -50,6 +50,7 @@ model Store {
   ifsc              String?
   businessType      String?
   kyc_status        String   @default("pending")
+  kycFailureReason  String?   @db.Text
   contactEmail      String?
   contactPhone      String?
   kycAddress        String?

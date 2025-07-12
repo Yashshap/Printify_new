@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import api from './api';
 import ShopRegistrationForm from './ShopRegistrationForm';
+import { toast } from 'react-toastify';
 
 function ProfilePage({ navigate, isLoggedIn, setIsLoggedIn, user, setUser, handleLogout }) {
   // All hooks at the top
@@ -57,6 +58,7 @@ function ProfilePage({ navigate, isLoggedIn, setIsLoggedIn, user, setUser, handl
           localStorage.removeItem('user');
           setIsLoggedIn(false);
           navigate('/');
+          toast(error.response?.data?.message || error.message || 'Failed to fetch user profile', { type: 'error' });
         }
       } else {
         setIsLoading(false);
@@ -83,6 +85,12 @@ function ProfilePage({ navigate, isLoggedIn, setIsLoggedIn, user, setUser, handl
     }
   }, [user]);
 
+  useEffect(() => {
+    if (store && store.kyc_status === 'rejected') {
+      toast('Your KYC was rejected. Please contact support or re-upload your KYC documents.', { type: 'error' });
+    }
+  }, [store]);
+
   // Fetch user orders when orders tab is active
   useEffect(() => {
     const fetchUserOrders = async () => {
@@ -91,7 +99,7 @@ function ProfilePage({ navigate, isLoggedIn, setIsLoggedIn, user, setUser, handl
       try {
         setOrdersLoading(true);
         setOrdersError(null);
-        const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token');
         if (!token) {
           setOrdersError('Please login to view orders');
           return;
@@ -99,7 +107,7 @@ function ProfilePage({ navigate, isLoggedIn, setIsLoggedIn, user, setUser, handl
 
         const response = await api.get('/orders/user', {
           headers: { 'Authorization': `Bearer ${token}` }
-        });
+      });
 
         addDebugLog('[ProfilePage] Orders API response', response.data);
         
@@ -111,7 +119,8 @@ function ProfilePage({ navigate, isLoggedIn, setIsLoggedIn, user, setUser, handl
       } catch (error) {
         addDebugLog('[ProfilePage] Failed to fetch orders', error);
         setOrdersError(error.response?.data?.message || 'Failed to fetch orders');
-      } finally {
+        toast(error.response?.data?.message || 'Failed to fetch orders', { type: 'error' });
+    } finally {
         setOrdersLoading(false);
       }
     };
@@ -1099,7 +1108,7 @@ function ProfilePage({ navigate, isLoggedIn, setIsLoggedIn, user, setUser, handl
                   </div>
                 )}
               </div>
-            </div>
+              </div>
 
               {isEditing && (
                 <div style={{ marginBottom: 32 }}>
@@ -1174,6 +1183,27 @@ function ProfilePage({ navigate, isLoggedIn, setIsLoggedIn, user, setUser, handl
                       </span>
                     )}
                   </h2>
+                  {/* KYC Rejected Guidance */}
+                  {store.kyc_status === 'rejected' && (
+                    <div style={{
+                      margin: '12px 0 24px 0',
+                      padding: '16px',
+                      background: '#fee2e2',
+                      color: '#b91c1c',
+                      borderRadius: 12,
+                      fontWeight: 500,
+                      fontSize: 15,
+                      border: '1px solid #ef4444',
+                      maxWidth: 480
+                    }}>
+                      Your KYC was rejected. Please contact support or re-upload your KYC documents to proceed.
+                      {store.kycFailureReason && (
+                        <div style={{ marginTop: 8, color: '#b91c1c', fontWeight: 600, fontSize: 14 }}>
+                          <strong>Reason:</strong> {store.kycFailureReason}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
                       {store.storeProfileImage && (
                         <div

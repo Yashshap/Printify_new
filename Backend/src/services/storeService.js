@@ -130,9 +130,9 @@ export const updateStorePricing = async (storeId, data) => {
   });
 };
 
-export const updateStoreKycStatus = async (razorpayAccountId, status) => {
+export const updateStoreKycStatus = async (razorpayAccountId, status, failureReason = null) => {
   return await prisma.store.updateMany({
     where: { razorpayAccountId },
-    data: { kyc_status: status },
+    data: { kyc_status: status, kycFailureReason: failureReason },
   });
 }; 

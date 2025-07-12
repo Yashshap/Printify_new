@@ -2,6 +2,8 @@ import express from 'express';
 import { registerStore, getPendingStores, approveStore, getAllApprovedStores, getStoreByOwner, updateStoreProfile, updateStorePricing } from '../../controllers/storeController.js';
 import { authenticate, authorizeRoles } from '../../middleware/auth.js';
 import { uploadPanDocument, uploadAddressProof, uploadBankProof } from '../../utils/s3.js';
+import { validate, validateFile } from '../../middleware/validation.js';
+import { storeRegistrationSchema } from '../../validations/schemas.js';
 import multer from 'multer';
 
 export const router = express.Router();
@@ -15,6 +17,38 @@ const kycDocumentsUpload = [
   uploadBankProof.single('bankProof'),
   kycUpload.none(), // allow text fields
 ];
+
+// KYC file validation middleware
+const validateKycFiles = (req, res, next) => {
+  const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif'];
+  const maxSize = 10 * 1024 * 1024; // 10MB
+
+  const files = [
+    { field: 'panDocument', file: req.files?.panDocument?.[0] || req.file },
+    { field: 'addressProof', file: req.files?.addressProof?.[0] },
+    { field: 'bankProof', file: req.files?.bankProof?.[0] }
+  ];
+
+  for (const { field, file } of files) {
+    if (file) {
+      if (file.size > maxSize) {
+        return res.status(400).json({
+          status: 'error',
+          message: `${field} file size must be less than 10MB`,
+          data: null
+        });
+      }
+      if (!allowedTypes.includes(file.mimetype)) {
+        return res.status(400).json({
+          status: 'error',
+          message: `${field} must be a PDF or image file`,
+          data: null
+        });
+      }
+    }
+  }
+  next();
+};
 
 /**
  * @openapi
@@ -50,7 +84,7 @@ const kycDocumentsUpload = [
  *       201:
  *         description: Store registered
  */
-router.post('/register', authenticate, kycDocumentsUpload, registerStore);
+router.post('/register', authenticate, kycDocumentsUpload, validateKycFiles, validate(storeRegistrationSchema), registerStore);
 
 /**
  * @openapi

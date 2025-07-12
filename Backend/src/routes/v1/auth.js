@@ -2,6 +2,9 @@ import express from 'express';
 import multer from 'multer';
 import { signup, login, getMe, updateProfile, uploadProfileImage } from '../../controllers/authController.js';
 import { authenticate } from '../../middleware/auth.js';
+import { validate } from '../../middleware/validation.js';
+import { validateFile } from '../../middleware/validation.js';
+import { userRegistrationSchema, userLoginSchema, userProfileUpdateSchema } from '../../validations/schemas.js';
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -58,7 +61,7 @@ export const router = express.Router();
  *       201:
  *         description: Signup successful
  */
-router.post('/signup', signup);
+router.post('/signup', validate(userRegistrationSchema), signup);
 
 /**
  * @openapi
@@ -82,7 +85,7 @@ router.post('/signup', signup);
  *       200:
  *         description: Login successful
  */
-router.post('/login', login);
+router.post('/login', validate(userLoginSchema), login);
 
 /**
  * @openapi
@@ -127,7 +130,7 @@ router.get('/me', authenticate, getMe);
  *       200:
  *         description: Profile updated successfully
  */
-router.put('/profile', authenticate, updateProfile);
+router.put('/profile', authenticate, validate(userProfileUpdateSchema), updateProfile);
 
 /**
  * @openapi
@@ -152,4 +155,4 @@ router.put('/profile', authenticate, updateProfile);
  *       200:
  *         description: Profile image uploaded successfully
  */
-router.post('/profile-image', authenticate, upload.single('profileImage'), uploadProfileImage); 
+router.post('/profile-image', authenticate, validateFile({ fieldName: 'profileImage', allowedTypes: ['image/jpeg', 'image/png', 'image/gif'] }), upload.single('profileImage'), uploadProfileImage); 

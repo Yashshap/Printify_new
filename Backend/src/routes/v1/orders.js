@@ -2,6 +2,9 @@ import express from 'express';
 import { createOrder, getShopOrders, getUserOrders, deleteOrderPdf, updateOrderStatus } from '../../controllers/orderController.js';
 import { authenticate } from '../../middleware/auth.js';
 import { upload } from '../../utils/s3.js';
+import { validate, validateFile } from '../../middleware/validation.js';
+import { orderCreationSchema, orderQuerySchema } from '../../validations/schemas.js';
+
 export const router = express.Router();
 
 /**
@@ -40,7 +43,7 @@ export const router = express.Router();
  *       201:
  *         description: Order created
  */
-router.post('/create', authenticate, upload.single('pdf'), createOrder);
+router.post('/create', authenticate, upload.single('pdf'), validateFile({ fieldName: 'pdf', allowedTypes: ['application/pdf'] }), validate(orderCreationSchema), createOrder);
 
 /**
  * @openapi
@@ -101,7 +104,7 @@ router.get('/shop/:storeId', authenticate, getShopOrders);
  *       200:
  *         description: List of user's orders
  */
-router.get('/user', authenticate, getUserOrders);
+router.get('/user', authenticate, validate(orderQuerySchema, 'query'), getUserOrders);
 
 /**
  * @openapi

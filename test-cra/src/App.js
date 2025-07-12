@@ -9,6 +9,7 @@ import ShopRegistrationForm from './ShopRegistrationForm';
 import ShopPrintOrders from './ShopPrintOrders';
 import ProfilePage from './ProfilePage';
 import CatalogPage from './CatalogPage';
+import { toast } from 'react-toastify';
 
 // Set the workerSrc for pdfjs to use the CDN version
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -172,54 +173,71 @@ function MainAppContent({ isLoggedIn, setIsLoggedIn, onLoginClick, showLogin, se
   };
 
   const initiateRazorpayPayment = (orderId, amount, currency, key_id, orderDetails) => {
-    const options = {
-      key: key_id,
-      amount: amount,
-      currency: currency,
-      name: "Printify",
-      description: "Order Payment",
-      order_id: orderId,
-      handler: async function (response) {
-        try {
-          const verifyResponse = await api.post('/razorpay/verify-payment', {
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-            orderId: orderDetails.id,
-          });
+    try {
+      const options = {
+        key: key_id,
+        amount: amount,
+        currency: currency,
+        name: "Printify",
+        description: "Order Payment",
+        order_id: orderId,
+        handler: async function (response) {
+          try {
+            const verifyResponse = await api.post('/razorpay/verify-payment', {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              orderId: orderDetails.id,
+            });
 
-          if (verifyResponse.data.status === 'success') {
-            alert('Payment successful and order confirmed!');
-            // Reset form
-            setPdfFile(null);
-            setNumPages(null);
-            setPagesInput("");
-            pagesInputRef.current = "";
-            setPagesToShow([]);
-            setSelectedShop(null);
-            setColorMode('color');
-          } else {
-            alert('Payment verification failed: ' + verifyResponse.data.message);
+            if (verifyResponse.data.status === 'success') {
+              toast('Payment successful and order confirmed!', { type: 'success' });
+              // Reset form
+              setPdfFile(null);
+              setNumPages(null);
+              setPagesInput("");
+              pagesInputRef.current = "";
+              setPagesToShow([]);
+              setSelectedShop(null);
+              setColorMode('color');
+            } else {
+              toast('Payment verification failed: ' + verifyResponse.data.message, { type: 'error' });
+            }
+          } catch (error) {
+            console.error('Payment verification error:', error);
+            toast('An error occurred during payment verification.', { type: 'error' });
           }
-        } catch (error) {
-          console.error('Payment verification error:', error);
-          alert('An error occurred during payment verification.');
-        }
-      },
-      prefill: {
-        name: orderDetails.user.firstName + " " + orderDetails.user.lastName,
-        email: orderDetails.user.email,
-        contact: orderDetails.user.mobile,
-      },
-      notes: {
-        address: "Printify Office",
-      },
-      theme: {
-        color: "#3399cc",
-      },
-    };
-    const rzp = new window.Razorpay(options);
-    rzp.open();
+        },
+        prefill: {
+          name: orderDetails.user.firstName + " " + orderDetails.user.lastName,
+          email: orderDetails.user.email,
+          contact: orderDetails.user.mobile,
+        },
+        notes: {
+          address: "Printify Office",
+        },
+        theme: {
+          color: "#3399cc",
+        },
+        modal: {
+          ondismiss: function () {
+            toast('Payment cancelled by user.', { type: 'info' });
+            console.log('Razorpay modal dismissed by user');
+          }
+        },
+        // Razorpay does not have a direct onPaymentError, but we can use handler and modal.ondismiss
+      };
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response) {
+        toast('Payment failed: ' + (response.error && response.error.description ? response.error.description : 'Unknown error'), { type: 'error' });
+        console.error('Razorpay payment failed:', response);
+      });
+      rzp.open();
+      console.log('Razorpay payment modal opened');
+    } catch (err) {
+      console.error('Error launching Razorpay:', err);
+      toast('Could not launch payment window. Please try again.', { type: 'error' });
+    }
   };
 
   // Fetch shops from backend
@@ -251,12 +269,12 @@ function MainAppContent({ isLoggedIn, setIsLoggedIn, onLoginClick, showLogin, se
       file.type !== 'application/pdf' &&
       !file.name.toLowerCase().endsWith('.pdf')
     ) {
-      alert('Please select a valid PDF file.');
+      toast('Please select a valid PDF file.', { type: 'error' });
       return;
     }
     // Validate file size (max 20MB)
     if (file.size > 20 * 1024 * 1024) {
-      alert('File size must be less than 20MB.');
+      toast('File size must be less than 20MB.', { type: 'error' });
       return;
     }
     setPdfFile(file);
@@ -298,17 +316,17 @@ function MainAppContent({ isLoggedIn, setIsLoggedIn, onLoginClick, showLogin, se
   // Order placement handler
   async function handlePlaceOrder() {
     if (!pdfFile) {
-      alert('Please upload a PDF first');
+      toast('Please upload a PDF first', { type: 'error' });
       return;
     }
     
     if (!selectedShop) {
-      alert('Please select a shop first');
+      toast('Please select a shop first', { type: 'error' });
       return;
     }
 
     if (!numPages) {
-      alert('Please wait for PDF to load completely');
+      toast('Please wait for PDF to load completely', { type: 'info' });
       return;
     }
 
@@ -326,7 +344,7 @@ function MainAppContent({ isLoggedIn, setIsLoggedIn, onLoginClick, showLogin, se
       // Get auth token
       const token = localStorage.getItem('token');
       if (!token) {
-        alert('Please login to place an order');
+        toast('Please login to place an order', { type: 'error' });
         setShowLogin(true);
         return;
       }
@@ -344,15 +362,15 @@ function MainAppContent({ isLoggedIn, setIsLoggedIn, onLoginClick, showLogin, se
         const orderDetails = response.data.data.order;
         initiateRazorpayPayment(orderId, amount, currency, key_id, orderDetails);
       } else {
-        alert('Failed to place order: ' + response.data.message);
+        toast('Failed to place order: ' + response.data.message, { type: 'error' });
       }
     } catch (error) {
       console.error('Order placement error:', error);
       if (error.response?.status === 401) {
-        alert('Please login to place an order');
+        toast('Please login to place an order', { type: 'error' });
         setShowLogin(true);
       } else {
-        alert('Failed to place order: ' + (error.response?.data?.message || error.message));
+        toast('Failed to place order: ' + (error.response?.data?.message || error.message), { type: 'error' });
       }
     } finally {
       setIsPlacingOrder(false);
@@ -386,6 +404,7 @@ function MainAppContent({ isLoggedIn, setIsLoggedIn, onLoginClick, showLogin, se
       setSignupData({ firstName: "", lastName: "", mobile: "", email: "", password: "", confirmPassword: "" });
     } catch (err) {
       setSignupError(err.response?.data?.message || "Signup failed");
+      toast(err.response?.data?.message || "Signup failed", { type: 'error' });
     }
   }
 
@@ -461,7 +480,7 @@ function MainAppContent({ isLoggedIn, setIsLoggedIn, onLoginClick, showLogin, se
                           size: pdfFile.size
                         });
                       }
-                      alert('Failed to load PDF. Please make sure the file is a valid PDF and try again.');
+                      toast('Failed to load PDF. Please make sure the file is a valid PDF and try again.', { type: 'error' });
                     }}
                     loading={<div>Loading PDF...</div>}
                   >
@@ -519,7 +538,7 @@ function MainAppContent({ isLoggedIn, setIsLoggedIn, onLoginClick, showLogin, se
                   onChange={handlePagesInputChange}
                   disabled={!pdfFile || !numPages}
                 />
-                  <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#4e7097]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h8m-4-4v8" /></svg>
+                  <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#4e7187]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h8m-4-4v8" /></svg>
                 </div>
               </label>
             </div>
@@ -923,8 +942,8 @@ function MainAppContent({ isLoggedIn, setIsLoggedIn, onLoginClick, showLogin, se
             </button>
           </div>
         </div>
-      )}
-    </>
+              )}
+      </>
   );
 }
 
@@ -1025,6 +1044,7 @@ export default function App() {
       }
     } catch (err) {
       setLoginError(err.response?.data?.message || "Login failed");
+      toast(err.response?.data?.message || "Login failed", { type: 'error' });
     }
   }
 

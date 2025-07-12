@@ -19,7 +19,7 @@ export const createOrder = async (req, res, next) => {
     res.status(201).json({ status: 'success', message: 'Order created', data: order });
   } catch (err) {
     console.error('DEBUG: createOrder error:', err);
-    res.status(400).json({ status: 'error', message: err.message, data: null });
+    next(err);
   }
 };
 
@@ -34,7 +34,7 @@ export const getShopOrders = async (req, res, next) => {
     });
     res.json({ status: 'success', message: 'Shop orders fetched', ...result });
   } catch (err) {
-    res.status(400).json({ status: 'error', message: err.message, data: null });
+    next(err);
   }
 };
 
@@ -49,7 +49,7 @@ export const getUserOrders = async (req, res, next) => {
     });
     res.json({ status: 'success', message: 'User orders fetched', ...result });
   } catch (err) {
-    res.status(400).json({ status: 'error', message: err.message, data: null });
+    next(err);
   }
 };
 
@@ -58,7 +58,7 @@ export const getOrderById = async (req, res, next) => {
     const order = await orderService.getOrderById(req.params.id);
     res.json({ status: 'success', message: 'Order fetched', data: order });
   } catch (err) {
-    res.status(400).json({ status: 'error', message: err.message, data: null });
+    next(err);
   }
 };
 
@@ -68,7 +68,7 @@ export const updateOrderStatus = async (req, res, next) => {
     const order = await orderService.updateOrderStatus(req.params.id, status);
     res.json({ status: 'success', message: 'Order status updated', data: order });
   } catch (err) {
-    res.status(400).json({ status: 'error', message: err.message, data: null });
+    next(err);
   }
 };
 
@@ -77,6 +77,6 @@ export const deleteOrderPdf = async (req, res, next) => {
     const order = await orderService.deleteOrderPdf(req.params.id);
     res.json({ status: 'success', message: 'Order PDF deleted and status set to completed', data: order });
   } catch (err) {
-    res.status(400).json({ status: 'error', message: err.message, data: null });
+    next(err);
   }
 }; 

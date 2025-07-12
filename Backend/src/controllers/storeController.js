@@ -16,7 +16,7 @@ export const registerStore = async (req, res, next) => {
     const store = await storeService.registerStore(storeData, req.user.id);
     res.status(201).json({ status: 'success', message: 'Store registered', data: store });
   } catch (err) {
-    res.status(400).json({ status: 'error', message: err.message, data: null });
+    next(err);
   }
 };
 
@@ -25,7 +25,7 @@ export const getPendingStores = async (req, res, next) => {
     const stores = await storeService.getPendingStores();
     res.json({ status: 'success', message: 'Pending stores fetched', data: stores });
   } catch (err) {
-    res.status(400).json({ status: 'error', message: err.message, data: null });
+    next(err);
   }
 };
 
@@ -34,7 +34,7 @@ export const approveStore = async (req, res, next) => {
     const store = await storeService.approveStore(req.params.id);
     res.json({ status: 'success', message: 'Store approved', data: store });
   } catch (err) {
-    res.status(400).json({ status: 'error', message: err.message, data: null });
+    next(err);
   }
 };
 
@@ -48,7 +48,7 @@ export const getAllApprovedStores = async (req, res, next) => {
     });
     res.json({ status: 'success', message: 'Approved stores fetched', ...result });
   } catch (err) {
-    res.status(400).json({ status: 'error', message: err.message, data: null });
+    next(err);
   }
 };
 
@@ -57,7 +57,7 @@ export const getStoreByOwner = async (req, res, next) => {
     const store = await storeService.getStoreByOwner(req.user.id);
     res.json({ status: 'success', message: 'Store profile fetched', data: store });
   } catch (err) {
-    res.status(400).json({ status: 'error', message: err.message, data: null });
+    next(err);
   }
 };
 
@@ -66,7 +66,7 @@ export const updateStoreProfile = async (req, res, next) => {
     const store = await storeService.updateStoreProfile(req.params.id, req.body);
     res.json({ status: 'success', message: 'Store profile updated', data: store });
   } catch (err) {
-    res.status(400).json({ status: 'error', message: err.message, data: null });
+    next(err);
   }
 };
 
@@ -75,6 +75,6 @@ export const updateStorePricing = async (req, res, next) => {
     const store = await storeService.updateStorePricing(req.params.id, req.body);
     res.json({ status: 'success', message: 'Store pricing updated', data: store });
   } catch (err) {
-    res.status(400).json({ status: 'error', message: err.message, data: null });
+    next(err);
   }
 }; 

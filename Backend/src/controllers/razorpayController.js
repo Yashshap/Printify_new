@@ -2,6 +2,7 @@ import * as razorpayService from '../services/razorpayService.js';
 import * as orderService from '../services/orderService.js';
 import crypto from 'crypto';
 import * as storeService from '../services/storeService.js';
+import { RazorpayError } from '../services/razorpayService.js';
 
 export const createOrder = async (req, res) => {
   try {
@@ -11,7 +12,18 @@ export const createOrder = async (req, res) => {
     await orderService.updateOrder(orderId, { razorpayOrderId: order.id });
     res.json({ status: 'success', message: 'Razorpay order created', data: order });
   } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message, data: null });
+    console.error('Razorpay order creation error:', error);
+    if (error instanceof RazorpayError) {
+      res.status(502).json({
+        status: 'error',
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        data: null
+      });
+    } else {
+      res.status(500).json({ status: 'error', message: error.message, data: null });
+    }
   }
 };
 
@@ -32,9 +44,11 @@ export const verifyPayment = async (req, res) => {
       await orderService.updateOrder(razorpay_order_id, { status: 'paid', razorpayPaymentId: razorpay_payment_id });
       res.json({ status: 'success', message: 'Payment verified successfully', data: { orderId: razorpay_order_id, paymentId: razorpay_payment_id } });
     } else {
+      console.warn('Payment verification failed for order:', razorpay_order_id, 'payment:', razorpay_payment_id);
       res.status(400).json({ status: 'error', message: 'Payment verification failed', data: null });
     }
   } catch (error) {
+    console.error('Payment verification error:', error);
     res.status(500).json({ status: 'error', message: error.message, data: null });
   }
 };
@@ -65,7 +79,7 @@ export const handleWebhook = async (req, res) => {
           break;
         case 'payment.failed':
           // Handle failed payment
-          console.log('Payment Failed:', payload.payment.entity.id);
+          console.warn('Payment Failed:', payload.payment.entity.id, payload.payment.entity.error_description);
           await orderService.updateOrder(payload.payment.entity.order_id, { status: 'failed', razorpayPaymentId: payload.payment.entity.id });
           break;
         case 'account.kyc.verification.completed':
@@ -82,8 +96,9 @@ export const handleWebhook = async (req, res) => {
           // Handle KYC verification failed
           try {
             const accountId = payload.account.entity.id;
-            console.log('KYC Verification Failed for account:', accountId);
-            await storeService.updateStoreKycStatus(accountId, 'rejected');
+            const failureReason = payload.account.entity.kyc?.failure_reason || payload.account.entity.kyc?.failureReason || 'Unknown reason';
+            console.warn('KYC Verification Failed for account:', accountId, 'Reason:', failureReason);
+            await storeService.updateStoreKycStatus(accountId, 'rejected', failureReason);
           } catch (err) {
             console.error('Error updating store KYC status (failed):', err);
           }
@@ -94,7 +109,7 @@ export const handleWebhook = async (req, res) => {
       }
       res.json({ status: 'success' });
     } else {
-      console.log('Webhook signature mismatch');
+      console.warn('Webhook signature mismatch');
       res.status(400).json({ status: 'error', message: 'Invalid signature' });
     }
   } catch (error) {
@@ -109,6 +124,17 @@ export const createPaymentTransfer = async (req, res) => {
     const transfer = await razorpayService.createTransfer(paymentId, transfers);
     res.json({ status: 'success', message: 'Payment transfer created', data: transfer });
   } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message, data: null });
+    console.error('Razorpay payment transfer error:', error);
+    if (error instanceof RazorpayError) {
+      res.status(502).json({
+        status: 'error',
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        data: null
+      });
+    } else {
+      res.status(500).json({ status: 'error', message: error.message, data: null });
+    }
   }
 };
